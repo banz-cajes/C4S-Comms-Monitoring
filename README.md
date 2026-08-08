@@ -5,7 +5,7 @@
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> A comprehensive communication workflow management system for Philippine Navy's C4 SYSTEMS (NS FOR CAISRS)
+> A comprehensive communication workflow management system for Philippine Navy's C4 SYSTEMS
 
 ## 📋 Overview
 
@@ -23,3 +23,13 @@ C4 SYSTEMS is a web-based communication workflow management platform designed fo
 - **📱 Responsive Design** - Works on desktop, tablet, and mobile
 
 ### 🏛️ Architecture
+
+
+<!-- Add these badges at the top of README.md -->
+![GitHub repo size](https://img.shields.io/github/repo-size/yourusername/c4-systems)
+![GitHub stars](https://img.shields.io/github/stars/yourusername/c4-systems?style=social)
+![GitHub forks](https://img.shields.io/github/forks/yourusername/c4-systems?style=social)
+![GitHub last commit](https://img.shields.io/github/last-commit/yourusername/c4-systems)
+![GitHub issues](https://img.shields.io/github/issues/yourusername/c4-systems)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/yourusername/c4-systems)
+![Website](https://img.shields.io/website?url=https://c4-systems.web.app)

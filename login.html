@@ -1,18 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>C4 SYSTEMS | Login</title>
-
-    <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
-        rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -21,13 +14,8 @@
         }
 
         :root {
-            --primary: #0f172a;
             --accent: #3b82f6;
             --accent-dark: #2563eb;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --info: #3b82f6;
             --gray-50: #f8fafc;
             --gray-100: #f1f5f9;
             --gray-200: #e2e8f0;
@@ -38,9 +26,6 @@
             --gray-700: #334155;
             --gray-800: #1e293b;
             --gray-900: #0f172a;
-            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
             --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
         }
 
@@ -51,94 +36,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-        }
-
-        /* Page Loading Overlay */
-        .page-loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, var(--gray-900), #0c4a6e);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s ease;
-        }
-
-        .page-loading.hide {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .loading-container {
-            text-align: center;
-        }
-
-        .loading-logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 1.5rem;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        .loading-logo img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border-radius: 20px;
-        }
-
-        .loading-spinner-large {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.2);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 1rem auto;
-        }
-
-        .loading-text {
-            color: white;
-            font-size: 0.875rem;
-            margin-top: 1rem;
-            letter-spacing: 1px;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-
-            50% {
-                transform: scale(1.05);
-                opacity: 0.9;
-            }
-        }
-
-        .login-page {
-            width: 100%;
-            padding: 1rem;
-            animation: fadeIn 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .login-card {
@@ -147,9 +44,19 @@
             padding: 2.5rem;
             width: 100%;
             max-width: 420px;
-            margin: 0 auto;
             box-shadow: var(--shadow-xl);
-            animation: slideUp 0.3s ease;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .login-logo {
@@ -158,7 +65,7 @@
             margin: 0 auto 1.5rem;
             border-radius: 20px;
             overflow: hidden;
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
         .login-logo img {
@@ -174,7 +81,7 @@
 
         .login-header h2 {
             font-size: 1.5rem;
-            font-weight: 700;
+            font-weight: 800;
             color: var(--gray-900);
         }
 
@@ -184,11 +91,11 @@
             margin-top: 0.25rem;
         }
 
-        .login-form .form-group {
+        .form-group {
             margin-bottom: 1.25rem;
         }
 
-        .login-form label {
+        .form-group label {
             display: block;
             font-size: 0.75rem;
             font-weight: 600;
@@ -197,34 +104,32 @@
             margin-bottom: 0.5rem;
         }
 
-        .login-form input {
+        .form-group input {
             width: 100%;
             padding: 0.75rem 1rem;
-            border: 1px solid var(--gray-200);
+            border: 1.5px solid var(--gray-200);
             border-radius: 12px;
             font-size: 0.875rem;
             transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
         }
 
-        .login-form input:focus {
+        .form-group input:focus {
             outline: none;
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .btn {
-            padding: 0.75rem 1rem;
+            padding: 0.75rem;
             border-radius: 12px;
             font-weight: 600;
             font-size: 0.875rem;
             border: none;
             cursor: pointer;
             transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
             width: 100%;
+            font-family: 'Inter', sans-serif;
         }
 
         .btn-primary {
@@ -234,24 +139,12 @@
 
         .btn-primary:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
 
         .btn-primary:disabled {
             opacity: 0.7;
             cursor: not-allowed;
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--gray-300);
-            color: var(--gray-700);
-        }
-
-        .btn-outline:hover {
-            background: var(--gray-50);
-            border-color: var(--accent);
-            color: var(--accent);
         }
 
         .login-footer {
@@ -287,40 +180,10 @@
             text-decoration: underline;
         }
 
-        .toast {
-            position: fixed;
-            bottom: 1.5rem;
-            right: 1.5rem;
-            background: white;
-            border-radius: 10px;
-            padding: 0.75rem 1.25rem;
-            box-shadow: var(--shadow-xl);
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            transform: translateX(400px);
-            transition: transform 0.3s;
-            border-left: 4px solid var(--success);
-            z-index: 2100;
-            font-size: 0.8rem;
-        }
-
-        .toast.show {
-            transform: translateX(0);
-        }
-
-        .toast.error {
-            border-left-color: var(--danger);
-        }
-
-        .toast.warning {
-            border-left-color: var(--warning);
-        }
-
         .loading-spinner {
             width: 20px;
             height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255,255,255,0.3);
             border-top-color: white;
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -328,212 +191,97 @@
         }
 
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
 
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Enhanced Modal Styles */
-        .modal {
-            display: none;
+        .toast {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 2000;
-            justify-content: center;
-            align-items: center;
-            padding: 1rem;
-            animation: fadeIn 0.2s ease;
-        }
-
-        .modal-content {
+            bottom: 1.5rem;
+            right: 1.5rem;
             background: white;
-            border-radius: 24px;
-            padding: 2rem;
-            max-width: 450px;
-            width: 100%;
-            animation: slideUp 0.3s ease;
-        }
-
-        .modal-header {
+            border-radius: 12px;
+            padding: 0.75rem 1.25rem;
+            box-shadow: var(--shadow-xl);
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .modal-header h3 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--gray-900);
-        }
-
-        .modal-header h3 i {
-            color: var(--accent);
-            margin-right: 0.5rem;
-        }
-
-        .close-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
-            background: var(--gray-100);
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .close-btn:hover {
-            background: var(--gray-200);
-            transform: rotate(90deg);
-        }
-
-        .modal-body {
-            margin-bottom: 1.5rem;
-        }
-
-        .modal-body p {
-            color: var(--gray-600);
-            margin-bottom: 1rem;
-            font-size: 0.875rem;
-        }
-
-        .modal-footer {
-            display: flex;
             gap: 0.75rem;
+            transform: translateX(400px);
+            transition: transform 0.3s;
+            border-left: 4px solid var(--gray-400);
+            z-index: 2100;
+            font-size: 0.8rem;
+            max-width: 350px;
         }
 
-        .modal-footer .btn {
-            flex: 1;
+        .toast.show {
+            transform: translateX(0);
         }
+
+        .toast.success { border-left-color: #10b981; }
+        .toast.error { border-left-color: #ef4444; }
+        .toast.warning { border-left-color: #f59e0b; }
+
+        .toast i {
+            font-size: 1.1rem;
+        }
+
+        .toast.success i { color: #10b981; }
+        .toast.error i { color: #ef4444; }
+        .toast.warning i { color: #f59e0b; }
     </style>
 </head>
-
 <body>
-    <!-- Page Loading Overlay -->
-    <div class="page-loading" id="pageLoading">
-        <div class="loading-container">
-            <div class="loading-logo">
-                <img src="logo.png" alt="C4 SYSTEMS" onerror="this.src='https://via.placeholder.com/80x80?text=C4'">
-            </div>
-            <div class="loading-spinner-large"></div>
-            <div class="loading-text">Loading C4 SYSTEMS...</div>
+    <div class="login-card">
+        <div class="login-logo">
+            <img src="logo.png" alt="C4 SYSTEMS" onerror="this.src='https://via.placeholder.com/80x80?text=C4'">
         </div>
-    </div>
+        <div class="login-header">
+            <h2>C4 SYSTEMS</h2>
+            <p>Communication Workflow System</p>
+        </div>
 
-    <div class="login-page" style="display: none;">
-        <div class="login-card">
-            <div class="login-logo">
-                <img src="logo.png" alt="C4 SYSTEMS Logo"
-                    onerror="this.src='https://via.placeholder.com/80x80?text=C4'">
+        <div class="login-form">
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="loginEmail" placeholder="your@email.com">
             </div>
-            <div class="login-header">
-                <h2>C4 SYSTEMS</h2>
-                <p>Communication Workflow System</p>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="loginPassword" placeholder="••••••••">
             </div>
-
-            <div class="login-form">
-                <div class="form-group">
-                    <label>Email Address</label>
-                    <input type="email" id="loginEmail" placeholder="your@email.com">
-                </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="loginPassword" placeholder="••••••••">
-                </div>
-                <div class="forgot-password">
-                    <a href="#" onclick="showForgotPasswordModal(); return false;">Forgot Password?</a>
-                </div>
-                <button class="btn btn-primary" id="loginBtn">
-                    <i class="fas fa-sign-in-alt"></i> Sign In
-                </button>
-                <div class="login-footer">
-                    <p>Contact administrator to create an account</p>
-                </div>
+            <div class="forgot-password">
+                <a href="#" onclick="showForgotPassword(); return false;">Forgot Password?</a>
+            </div>
+            <button class="btn btn-primary" id="loginBtn" onclick="handleLogin()">
+                <i class="fas fa-sign-in-alt"></i> Sign In
+            </button>
+            <div class="login-footer">
+                <p style="font-size:0.7rem; color:var(--gray-500);">Contact administrator to create an account</p>
             </div>
         </div>
     </div>
 
-    <!-- Enhanced Forgot Password Modal -->
-    <div id="forgotPasswordModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-key"></i> Reset Password</h3>
-                <button class="close-btn" onclick="closeModal('forgotPasswordModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>Enter your email address and we'll send you a link to reset your password.</p>
-                <div class="form-group">
-                    <label>Email Address</label>
-                    <input type="email" id="resetEmail" placeholder="your@email.com"
-                        style="width:100%; padding:0.75rem; border-radius:12px; border:1px solid var(--gray-200);">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button onclick="sendPasswordReset()" class="btn btn-primary" id="resetBtn">Send Reset Link</button>
-                <button onclick="closeModal('forgotPasswordModal')" class="btn btn-outline">Cancel</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- Toast -->
     <div id="toast" class="toast">
         <i class="fas"></i>
         <span id="toastMessage"></span>
     </div>
 
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <script>
-        // Firebase Config
-        const firebaseConfig = {
-            apiKey: "AIzaSyAxjoyWIO6Cd4iyh73IGJ7FE01gaf58GfU",
-            authDomain: "comms-monitoring.firebaseapp.com",
-            databaseURL: "https://comms-monitoring-default-rtdb.firebaseio.com",
-            projectId: "comms-monitoring",
-            storageBucket: "comms-monitoring.firebasestorage.app",
-            messagingSenderId: "178413618862",
-            appId: "1:178413618862:web:291d6f4bdba871a058cf3f",
-            measurementId: "G-DXEDZGT3GW"
-        };
-
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // Set persistence to LOCAL
+        // Set persistence
         auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-        // Hide page loading after 500ms
-        setTimeout(() => {
-            const pageLoading = document.getElementById('pageLoading');
-            const loginPage = document.querySelector('.login-page');
-            if (pageLoading) {
-                pageLoading.classList.add('hide');
-                setTimeout(() => {
-                    pageLoading.style.display = 'none';
-                    loginPage.style.display = 'block';
-                }, 500);
-            }
-        }, 800);
-
+        // Toast function
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const toastMessage = document.getElementById('toastMessage');
@@ -547,51 +295,35 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) modal.style.display = 'none';
-        }
-
-        function showForgotPasswordModal() {
-            document.getElementById('resetEmail').value = '';
-            document.getElementById('forgotPasswordModal').style.display = 'flex';
-        }
-
-        async function sendPasswordReset() {
-            const email = document.getElementById('resetEmail').value.trim();
-            const resetBtn = document.getElementById('resetBtn');
-
-            if (!email) {
-                showToast('Please enter your email address', 'error');
-                return;
-            }
-
-            const originalText = resetBtn.innerHTML;
-            resetBtn.innerHTML = '<span class="loading-spinner"></span> Sending...';
-            resetBtn.disabled = true;
-
-            try {
-                await auth.sendPasswordResetEmail(email);
-                showToast('Password reset email sent! Check your inbox.', 'success');
-                closeModal('forgotPasswordModal');
-                document.getElementById('resetEmail').value = '';
-            } catch (error) {
-                let message = 'Failed to send reset email';
-                if (error.code === 'auth/user-not-found') {
-                    message = 'No account found with this email address';
-                } else if (error.code === 'auth/invalid-email') {
-                    message = 'Invalid email address format';
-                } else if (error.code === 'auth/too-many-requests') {
-                    message = 'Too many requests. Please try again later';
+        // Forgot password modal - simple prompt
+        function showForgotPassword() {
+            Swal.fire({
+                title: 'Reset Password',
+                text: 'Enter your email address to receive a password reset link.',
+                input: 'email',
+                inputPlaceholder: 'your@email.com',
+                showCancelButton: true,
+                confirmButtonText: 'Send Reset Link',
+                cancelButtonText: 'Cancel',
+                preConfirm: async (email) => {
+                    try {
+                        await auth.sendPasswordResetEmail(email);
+                        showToast('Password reset email sent!', 'success');
+                    } catch (error) {
+                        let message = 'Failed to send reset email';
+                        if (error.code === 'auth/user-not-found') {
+                            message = 'No account found with this email';
+                        } else if (error.code === 'auth/invalid-email') {
+                            message = 'Invalid email address';
+                        }
+                        Swal.showValidationMessage(message);
+                    }
                 }
-                showToast(message, 'error');
-            } finally {
-                resetBtn.innerHTML = originalText;
-                resetBtn.disabled = false;
-            }
+            });
         }
 
-        async function login() {
+        // Login function
+        async function handleLogin() {
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             const loginBtn = document.getElementById('loginBtn');
@@ -607,7 +339,8 @@
 
             try {
                 const userCredential = await auth.signInWithEmailAndPassword(email, password);
-
+                
+                // Check if user exists in Firestore
                 const userDoc = await db.collection('users').doc(userCredential.user.uid).get();
                 if (!userDoc.exists) {
                     await db.collection('users').doc(userCredential.user.uid).set({
@@ -618,8 +351,7 @@
                     });
                 }
 
-                showToast('Login successful! Redirecting...');
-
+                showToast('Login successful! Redirecting...', 'success');
                 setTimeout(() => {
                     window.location.href = 'index.html';
                 }, 500);
@@ -638,31 +370,21 @@
             }
         }
 
+        // Enter key support
+        document.getElementById('loginPassword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+        document.getElementById('loginEmail').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+
         // Check if already logged in
         auth.onAuthStateChanged((user) => {
             if (user) {
                 window.location.href = 'index.html';
             }
         });
-
-        // Enter key support
-        document.getElementById('loginPassword').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') login();
-        });
-
-        document.getElementById('loginEmail').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') login();
-        });
-
-        document.getElementById('loginBtn').addEventListener('click', login);
-
-        window.onclick = function (event) {
-            const modal = document.getElementById('forgotPasswordModal');
-            if (event.target === modal) {
-                closeModal('forgotPasswordModal');
-            }
-        };
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>
-
 </html>
