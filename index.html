@@ -20,7 +20,10 @@
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/dark-theme.css">
 
-    <!-- Firebase Config -->
+    <!-- Firebase Config - LOAD IN ORDER: config-loader → config.json (optional) → firebase-config -->
+    <script src="config-loader.js"></script>
+    <!-- Optional: Load config from external config.json file (for environment-specific values) -->
+    <!-- <script>loadConfigFromJSON('config.json');</script> -->
     <script src="firebase-config.js"></script>
 </head>
 <body>

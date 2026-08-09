@@ -115,6 +115,10 @@ auth.onAuthStateChanged(async (user) => {
             if (typeof initApp === 'function') {
                 initApp();
             }
+            // Initialize chat (if chat module is available)
+            if (typeof initChat === 'function') {
+                initChat();
+            }
             resetSessionTimer();
             setupActivityListeners();
         } catch (error) {

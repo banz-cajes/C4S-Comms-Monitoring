@@ -5,6 +5,7 @@
 let chatMessages = [];
 let chatListener = null;
 let isChatOpen = false;
+let unreadCount = 0;
 
 // ============================================
 // INITIALIZE CHAT
@@ -31,6 +32,10 @@ function toggleChat() {
     if (!isChatOpen) {
         setTimeout(() => document.getElementById('chatInput')?.focus(), 300);
         scrollChatToBottom();
+        // Mark all current messages as read
+        markAllMessagesAsRead();
+        unreadCount = 0;
+        updateChatBadge();
     }
 }
 
@@ -63,9 +68,24 @@ function setupChatListener() {
             });
             chatMessages = messages;
             renderChatMessages();
+            // Update unread count (count messages not from current user and not in readBy)
+            updateUnreadCount();
         }, error => {
             console.warn('Chat listener error:', error.message);
-            // Try to reconnect after 5 seconds
+            // If permission denied, disable chat UI and show guidance
+            if (error.code === 'permission-denied') {
+                const chatBox = document.getElementById('chatBox');
+                const chatInput = document.getElementById('chatInput');
+                const chatSendBtn = document.getElementById('chatSendBtn');
+                const chatToggle = document.getElementById('chatToggleBtn');
+                if (chatInput) chatInput.disabled = true;
+                if (chatSendBtn) chatSendBtn.disabled = true;
+                if (chatToggle) chatToggle.title = 'Chat unavailable: insufficient Firestore permissions';
+                showToast('Chat unavailable: missing Firestore permissions. Check project rules.', 'error');
+                return;
+            }
+
+            // For other errors, try to reconnect after 5 seconds
             setTimeout(setupChatListener, 5000);
         });
 }
@@ -92,11 +112,12 @@ function renderChatMessages() {
     container.innerHTML = chatMessages.map(msg => {
         const isSelf = msg.userId === currentUser?.uid;
         const userName = msg.userName || 'Unknown';
+        const isUnread = msg.readBy && !msg.readBy.includes(currentUser?.uid);
         const time = msg.timestamp?.toDate?.() || new Date(msg.timestamp);
         const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
         
         return `
-            <div class="chat-message ${isSelf ? 'chat-message-self' : 'chat-message-other'}">
+            <div class="chat-message ${isSelf ? 'chat-message-self' : 'chat-message-other'} ${isUnread ? 'unread' : ''}">
                 <div class="msg-user">
                     ${isSelf ? 'You' : escapeHtml(userName)}
                     <span class="msg-time">${timeStr}</span>
@@ -150,11 +171,67 @@ async function sendChatMessage() {
         input.value = '';
     } catch (error) {
         console.error('Send error:', error);
+        if (error.code === 'permission-denied') {
+            showToast('Send failed: insufficient Firestore permissions. Contact admin.', 'error');
+            const chatInput = document.getElementById('chatInput');
+            const chatSendBtn = document.getElementById('chatSendBtn');
+            if (chatInput) chatInput.disabled = true;
+            if (chatSendBtn) chatSendBtn.disabled = true;
+            return;
+        }
         showToast('Failed to send: ' + error.message, 'error');
     } finally {
         input.disabled = false;
         if (sendBtn) sendBtn.disabled = false;
         input.focus();
+    }
+}
+
+// ============================================
+// UNREAD MESSAGE TRACKING
+// ============================================
+
+function updateUnreadCount() {
+    if (!currentUser) return;
+    unreadCount = chatMessages.filter(msg => {
+        // Unread if: not from current user AND (no readBy array OR current user not in readBy)
+        return msg.userId !== currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid));
+    }).length;
+    updateChatBadge();
+}
+
+function updateChatBadge() {
+    const badge = document.getElementById('chatBadge');
+    if (!badge) return;
+    if (unreadCount > 0) {
+        badge.textContent = unreadCount;
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+async function markAllMessagesAsRead() {
+    if (!db || !currentUser || !chatMessages.length) return;
+    const messagesForThisUser = chatMessages.filter(msg => msg.userId !== currentUser.uid);
+    
+    // Batch update messages to add current user to readBy array
+    const batch = db.batch();
+    messagesForThisUser.forEach(msg => {
+        const docRef = db.collection('chat_messages').doc(msg.id);
+        const readBy = msg.readBy || [];
+        if (!readBy.includes(currentUser.uid)) {
+            readBy.push(currentUser.uid);
+            batch.update(docRef, { readBy: readBy });
+        }
+    });
+    
+    try {
+        await batch.commit();
+        unreadCount = 0;
+        updateChatBadge();
+    } catch (error) {
+        console.warn('Error marking messages as read:', error);
     }
 }
 

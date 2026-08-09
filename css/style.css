@@ -625,7 +625,7 @@ body {
 /* Column widths - Better spacing for subject */
 th:nth-child(1), td:nth-child(1) { width: 35px; min-width: 35px; max-width: 35px; }  /* Checkbox */
 th:nth-child(2), td:nth-child(2) { width: 65px; min-width: 65px; max-width: 65px; }  /* NR # */
-th:nth-child(3), td:nth-child(3) { width: 280px; min-width: 280px; max-width: 280px; }  /* Subject / Type - INCREASED */
+th:nth-child(3), td:nth-child(3) { width: 400px; min-width: 400px; max-width: 400px; }  /* Subject / Type - EXPANDED FOR FULL TEXT */
 th:nth-child(4), td:nth-child(4) { width: 160px; min-width: 160px; max-width: 160px; }  /* Distribution */
 th:nth-child(5), td:nth-child(5) { width: 130px; min-width: 130px; max-width: 130px; }  /* Release / Status */
 th:nth-child(6), td:nth-child(6) { width: 150px; min-width: 150px; max-width: 150px; }  /* Compliance */
@@ -635,7 +635,7 @@ th:nth-child(8), td:nth-child(8) { width: 110px; min-width: 110px; max-width: 11
 table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 1050px;
+    min-width: 1170px;
     font-size: 0.75rem;
 }
 
@@ -671,23 +671,26 @@ tbody tr:hover td {
     background: var(--gray-50);
 }
 
-/* Subject Column - Better spacing */
+/* Subject Column - Show all text with justified alignment */
 .subject-with-type {
     display: flex;
     flex-direction: column;
     gap: 3px;
-    max-width: 280px;
+    max-width: 100%;
+    width: 100%;
 }
 
 .comm-subject {
     font-weight: 700;
     font-size: 0.75rem;
-    line-height: 1.4;
+    line-height: 1.5;
     color: var(--gray-800);
-    display: -webkit-box;
+    display: block;
+    white-space: normal;
     word-break: break-word;
     text-align: justify;
-    width: 139%;
+    width: 100%;
+    overflow: visible;
 }
 
 .comm-type {
@@ -2475,6 +2478,17 @@ body.dark-theme .chat-message .msg-user {
 
 .chat-message-self .msg-time {
     color: rgba(255, 255, 255, 0.6);
+}
+
+/* Unread Message Indicator */
+.chat-message.unread {
+    border-left: 4px solid #3b82f6;
+    background: rgba(59, 130, 246, 0.05);
+}
+
+body.dark-theme .chat-message.unread {
+    border-left: 4px solid #60a5fa;
+    background: rgba(96, 165, 250, 0.1);
 }
 
 /* Chat Input Area */

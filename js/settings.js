@@ -258,6 +258,130 @@ function showSettingsTab(tabId) {
     }
 }
 
+// Load users into the settings UI (minimal implementation)
+async function loadUsersIntoSettings() {
+    const container = document.getElementById('settingsUserList');
+    if (!container) return;
+    container.innerHTML = `<div style="text-align:center; padding: 1rem; color: var(--gray-500);">` +
+        `<i class="fas fa-spinner fa-spin"></i> Loading users...</div>`;
+
+    if (!db) {
+        container.innerHTML = `<div style="padding:1rem; color:var(--gray-500);">Firestore not initialized.</div>`;
+        return;
+    }
+
+    try {
+        // Only admins can manage users - if permissions object exists, check
+        if (typeof permissions !== 'undefined' && !permissions.canManageUsers) {
+            container.innerHTML = `<div style="padding:1rem; color:var(--gray-500);">You don't have permission to manage users.</div>`;
+            return;
+        }
+
+        const snapshot = await db.collection('users').orderBy('email').get();
+        if (snapshot.empty) {
+            container.innerHTML = `<div style="padding:1rem; color:var(--gray-500);">No users found.</div>`;
+            return;
+        }
+
+        const rows = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const isAdmin = (typeof permissions !== 'undefined' && permissions.canManageUsers);
+                rows.push(`
+                    <div class="user-row" data-userid="${doc.id}" style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.75rem; border-bottom:1px solid var(--gray-100);">
+                        <div style="display:flex; gap:0.75rem; align-items:center; min-width:0;">
+                            <div style="width:36px; height:36px; border-radius:8px; background:var(--gray-100); display:flex; align-items:center; justify-content:center; font-weight:600;">${(data.name||'U').charAt(0).toUpperCase()}</div>
+                            <div style="min-width:0;">
+                                <div style="font-weight:600; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(data.name || doc.id)}</div>
+                                <div style="font-size:0.7rem; color:var(--gray-500);">${escapeHtml(data.email || '')}</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            <div style="font-size:0.75rem; color:var(--gray-600);">${escapeHtml(data.role || 'viewer')}</div>
+                            ${isAdmin ? `
+                                <button class="btn btn-sm" onclick="openEditUserModal('${doc.id}')">Edit</button>
+                                <button class="btn btn-sm btn-danger" onclick="confirmDeleteUser('${doc.id}')">Delete</button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `);
+        });
+
+        container.innerHTML = rows.join('');
+    } catch (error) {
+        console.error('Error loading users:', error);
+        container.innerHTML = `<div style="padding:1rem; color:var(--gray-500);">Error loading users: ${error.message}</div>`;
+    }
+}
+
+// Open edit user modal (simple role change)
+function openEditUserModal(userId) {
+    if (!db) return showToast('Firestore not initialized', 'error');
+    const docRef = db.collection('users').doc(userId);
+    docRef.get().then(doc => {
+        if (!doc.exists) return showToast('User not found', 'error');
+        const data = doc.data();
+        const currentRole = data.role || 'viewer';
+        Swal.fire({
+            title: 'Edit User Role',
+            input: 'select',
+            inputOptions: {
+                'viewer': 'Viewer',
+                'creator': 'Creator',
+                'approver': 'Approver',
+                'admin': 'Admin'
+            },
+            inputValue: currentRole,
+            showCancelButton: true,
+            confirmButtonText: 'Save'
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            const newRole = result.value;
+            docRef.update({ role: newRole }).then(() => {
+                showToast('User role updated', 'success');
+                loadUsersIntoSettings();
+            }).catch(err => {
+                console.error('Update user role error:', err);
+                showToast('Failed to update user: ' + err.message, 'error');
+            });
+        });
+    }).catch(err => {
+        console.error('Get user error:', err);
+        showToast('Error fetching user: ' + err.message, 'error');
+    });
+}
+
+function confirmDeleteUser(userId) {
+    Swal.fire({
+        title: 'Delete User?',
+        text: 'This will permanently remove the user. Continue?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Delete'
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        deleteUser(userId);
+    });
+}
+
+function deleteUser(userId) {
+    if (!db) return showToast('Firestore not initialized', 'error');
+    db.collection('users').doc(userId).delete().then(() => {
+        showToast('User deleted', 'success');
+        loadUsersIntoSettings();
+    }).catch(err => {
+        console.error('Delete user error:', err);
+        showToast('Failed to delete user: ' + err.message, 'error');
+    });
+}
+
+// Logout helper from the settings modal
+function logoutFromSettings() {
+    closeModal('settingsModal');
+    if (typeof logout === 'function') logout();
+}
+
 function initSettingsTabs() {
     document.querySelectorAll('.settings-tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -274,6 +398,65 @@ function initSettingsTabs() {
             applyTheme(appSettings.theme);
         });
     });
+}
+
+// Open Create User modal and reset inputs
+function openCreateUserModal() {
+    if (typeof permissions !== 'undefined' && !permissions.canManageUsers) {
+        return showToast('You do not have permission to create users.', 'error');
+    }
+    const modal = document.getElementById('createUserModal');
+    if (!modal) return showToast('Create User modal not found', 'error');
+    // clear fields
+    const name = document.getElementById('newUserName');
+    const email = document.getElementById('newUserEmail');
+    const pass = document.getElementById('newUserPassword');
+    const conf = document.getElementById('newUserConfirmPassword');
+    const role = document.getElementById('newUserRole');
+    if (name) name.value = '';
+    if (email) email.value = '';
+    if (pass) pass.value = '';
+    if (conf) conf.value = '';
+    if (role) role.value = 'viewer';
+    openModal('createUserModal');
+}
+
+// Create a user document (note: does NOT create Firebase Auth user)
+async function createUser() {
+    if (typeof permissions !== 'undefined' && !permissions.canManageUsers) {
+        return showToast('You do not have permission to create users.', 'error');
+    }
+
+    const name = document.getElementById('newUserName')?.value.trim();
+    const email = document.getElementById('newUserEmail')?.value.trim();
+    const password = document.getElementById('newUserPassword')?.value || '';
+    const confirm = document.getElementById('newUserConfirmPassword')?.value || '';
+    const role = document.getElementById('newUserRole')?.value || 'viewer';
+
+    if (!name || !email) return showToast('Name and email are required', 'error');
+    if (password && password !== confirm) return showToast('Passwords do not match', 'error');
+
+    // Create a user document in /users. Inform admin if Auth account is needed.
+    if (!db) return showToast('Firestore not initialized', 'error');
+
+    try {
+        // Use email as document id if possible (replace @ with _)
+        const userId = null; // let Firestore generate id
+        const data = {
+            name: sanitizeInput(name),
+            email: sanitizeInput(email),
+            role: role,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection('users').add(data);
+        showToast('User record created. Note: this does not create an Auth account.', 'success');
+        closeModal('createUserModal');
+        loadUsersIntoSettings();
+    } catch (error) {
+        console.error('Create user error:', error);
+        showToast('Failed to create user: ' + error.message, 'error');
+    }
 }
 
 function enable2FA() {
