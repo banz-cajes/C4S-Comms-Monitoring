@@ -1,10 +1,13 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Anyone logged in can upload files
+    // Users can only upload, replace, or remove files in their own attachment folder.
     match /attachments/{userId}/{allPaths=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('^(image/.*|application/pdf|text/plain)$');
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
     
     // User-specific folders

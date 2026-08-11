@@ -1,29 +1,37 @@
 // ============================================
-// C4 SYSTEMS - Chat Functions (Simplified)
+// C4 SYSTEMS - Team and direct chat
 // ============================================
 
 let chatMessages = [];
-let chatListener = null;
+let chatListeners = [];
+let chatMessageMap = new Map();
 let isChatOpen = false;
 let unreadCount = 0;
-
-// ============================================
-// INITIALIZE CHAT
-// ============================================
+let activeChat = { type: 'team', userId: null, userName: null };
 
 function initChat() {
-    console.log('💬 Initializing chat...');
-    if (!currentUser) {
-        console.log('⏳ Waiting for user...');
-        setTimeout(initChat, 1000);
-        return;
-    }
+    if (!currentUser) return setTimeout(initChat, 1000);
+    loadChatRecipients();
     setupChatListener();
 }
 
-// ============================================
-// TOGGLE CHAT
-// ============================================
+async function loadChatRecipients() {
+    const selector = document.getElementById('chatRecipient');
+    if (!selector || !db || !currentUser) return;
+    try {
+        const snapshot = await db.collection('chat_profiles').orderBy('email').get();
+        const users = snapshot.docs
+            .filter(doc => doc.id !== currentUser.uid)
+            .map(doc => ({ id: doc.id, ...doc.data() }));
+        selector.innerHTML = '<option value="">Direct message…</option>' + users.map(user => {
+            const name = user.name || user.email || 'User';
+            return `<option value="${user.id}" data-name="${escapeHtml(name)}">${escapeHtml(name)}${user.email ? ` (${escapeHtml(user.email)})` : ''}</option>`;
+        }).join('');
+    } catch (error) {
+        console.warn('Unable to load chat recipients:', error.message);
+        selector.title = 'Unable to load users for direct messages';
+    }
+}
 
 function toggleChat() {
     const chatBox = document.getElementById('chatBox');
@@ -32,218 +40,176 @@ function toggleChat() {
     if (!isChatOpen) {
         setTimeout(() => document.getElementById('chatInput')?.focus(), 300);
         scrollChatToBottom();
-        // Mark all current messages as read
         markAllMessagesAsRead();
-        unreadCount = 0;
-        updateChatBadge();
     }
 }
 
-// ============================================
-// SETUP CHAT LISTENER
-// ============================================
+function selectTeamChat() {
+    activeChat = { type: 'team', userId: null, userName: null };
+    const selector = document.getElementById('chatRecipient');
+    if (selector) selector.value = '';
+    updateActiveChatUI();
+}
+
+function selectDirectChat(userId) {
+    if (!userId) return selectTeamChat();
+    const option = document.querySelector(`#chatRecipient option[value="${userId}"]`);
+    activeChat = { type: 'direct', userId, userName: option?.dataset.name || option?.textContent || 'Direct message' };
+    updateActiveChatUI();
+}
+
+function updateActiveChatUI() {
+    const isTeam = activeChat.type === 'team';
+    document.getElementById('teamChatButton')?.classList.toggle('active', isTeam);
+    const title = document.getElementById('chatTitle');
+    const input = document.getElementById('chatInput');
+    if (title) title.textContent = isTeam ? 'Team Chat' : activeChat.userName;
+    if (input) input.placeholder = isTeam ? 'Message the team...' : `Message ${activeChat.userName}...`;
+    renderChatMessages();
+    markAllMessagesAsRead();
+}
 
 function setupChatListener() {
-    if (chatListener) {
-        chatListener();
-        chatListener = null;
-    }
-    
+    chatListeners.forEach(unsubscribe => unsubscribe());
+    chatListeners = [];
+    chatMessageMap.clear();
     if (!db || !currentUser) return;
-    
-    console.log('💬 Setting up chat listener...');
-    
-    chatListener = db.collection('chat_messages')
-        .orderBy('timestamp', 'desc')
-        .limit(50)
-        .onSnapshot(snapshot => {
-            const messages = [];
-            snapshot.forEach(doc => {
-                messages.push({ id: doc.id, ...doc.data() });
-            });
-            messages.sort((a, b) => {
-                const ta = a.timestamp?.toDate?.() || new Date(a.timestamp);
-                const tb = b.timestamp?.toDate?.() || new Date(b.timestamp);
-                return ta - tb;
-            });
-            chatMessages = messages;
-            renderChatMessages();
-            // Update unread count (count messages not from current user and not in readBy)
-            updateUnreadCount();
-        }, error => {
-            console.warn('Chat listener error:', error.message);
-            // If permission denied, disable chat UI and show guidance
-            if (error.code === 'permission-denied') {
-                const chatBox = document.getElementById('chatBox');
-                const chatInput = document.getElementById('chatInput');
-                const chatSendBtn = document.getElementById('chatSendBtn');
-                const chatToggle = document.getElementById('chatToggleBtn');
-                if (chatInput) chatInput.disabled = true;
-                if (chatSendBtn) chatSendBtn.disabled = true;
-                if (chatToggle) chatToggle.title = 'Chat unavailable: insufficient Firestore permissions';
-                showToast('Chat unavailable: missing Firestore permissions. Check project rules.', 'error');
-                return;
-            }
-
-            // For other errors, try to reconnect after 5 seconds
-            setTimeout(setupChatListener, 5000);
+    const handleSnapshot = snapshot => {
+        snapshot.docChanges().forEach(change => {
+            if (change.type === 'removed') chatMessageMap.delete(change.doc.id);
+            else chatMessageMap.set(change.doc.id, { id: change.doc.id, ...change.doc.data() });
         });
+        chatMessages = [...chatMessageMap.values()].sort((a, b) => getMessageTime(a) - getMessageTime(b));
+        renderChatMessages();
+        updateUnreadCount();
+    };
+    const handleError = error => {
+        console.warn('Chat listener error:', error.message);
+        if (error.code === 'permission-denied') showToast('Chat unavailable: insufficient Firestore permissions.', 'error');
+    };
+    // Separate, rule-compatible queries keep direct messages private to participants.
+    chatListeners.push(db.collection('chat_messages').where('conversationType', '==', 'team').orderBy('timestamp', 'desc').limit(100).onSnapshot(handleSnapshot, handleError));
+    chatListeners.push(db.collection('chat_messages').where('participants', 'array-contains', currentUser.uid).orderBy('timestamp', 'desc').limit(100).onSnapshot(handleSnapshot, handleError));
 }
 
-// ============================================
-// RENDER CHAT MESSAGES
-// ============================================
+function getMessageTime(message) {
+    const value = message.timestamp?.toDate?.() || new Date(message.timestamp || 0);
+    return value.getTime() || 0;
+}
+
+function messageMatchesActiveChat(message) {
+    if (message.conversationType === 'team') return activeChat.type === 'team';
+    return activeChat.type === 'direct' && Array.isArray(message.participants) && message.participants.includes(currentUser?.uid) && message.participants.includes(activeChat.userId);
+}
+
+function isMessageVisibleToUser(message) {
+    return message.conversationType === 'team' || message.participants?.includes(currentUser?.uid);
+}
 
 function renderChatMessages() {
     const container = document.getElementById('chatMessages');
     if (!container) return;
-    
-    if (chatMessages.length === 0) {
-        container.innerHTML = `
-            <div class="chat-welcome">
-                <i class="fas fa-comments" style="font-size: 2rem; color: var(--gray-400);"></i>
-                <p style="color: var(--gray-500); margin-top: 0.5rem;">No messages yet</p>
-                <p style="font-size: 0.7rem; color: var(--gray-400);">Be the first to send a message!</p>
-            </div>
-        `;
+    const messages = chatMessages.filter(messageMatchesActiveChat);
+    if (!messages.length) {
+        container.innerHTML = `<div class="chat-welcome"><i class="fas fa-comments" style="font-size:2rem;"></i><p style="margin-top:.5rem;">No messages yet</p><p style="font-size:.7rem;">Start the conversation.</p></div>`;
         return;
     }
-    
-    container.innerHTML = chatMessages.map(msg => {
+    container.innerHTML = messages.map(msg => {
         const isSelf = msg.userId === currentUser?.uid;
-        const userName = msg.userName || 'Unknown';
-        const isUnread = msg.readBy && !msg.readBy.includes(currentUser?.uid);
-        const time = msg.timestamp?.toDate?.() || new Date(msg.timestamp);
-        const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        
-        return `
-            <div class="chat-message ${isSelf ? 'chat-message-self' : 'chat-message-other'} ${isUnread ? 'unread' : ''}">
-                <div class="msg-user">
-                    ${isSelf ? 'You' : escapeHtml(userName)}
-                    <span class="msg-time">${timeStr}</span>
-                </div>
-                <div>${escapeHtml(msg.text)}</div>
-            </div>
-        `;
+        const isUnread = !isSelf && (!msg.readBy || !msg.readBy.includes(currentUser?.uid));
+        const time = new Date(getMessageTime(msg));
+        const edited = msg.editedAt ? ' <span class="msg-edited">edited</span>' : '';
+        return `<div class="chat-message ${isSelf ? 'chat-message-self' : 'chat-message-other'} ${isUnread ? 'unread' : ''}">
+            <div class="msg-user">${isSelf ? 'You' : escapeHtml(msg.userName || 'Unknown')}<span class="msg-time">${time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}${edited}</span></div>
+            <div>${escapeHtml(msg.text || '')}</div>
+            ${isSelf ? `<div class="msg-actions"><button onclick="editChatMessage('${msg.id}')" title="Edit message"><i class="fas fa-pen"></i></button><button onclick="unsendChatMessage('${msg.id}')" title="Unsend message"><i class="fas fa-trash-alt"></i></button></div>` : ''}
+        </div>`;
     }).join('');
-    
     scrollChatToBottom();
 }
 
-// ============================================
-// SCROLL CHAT TO BOTTOM
-// ============================================
-
 function scrollChatToBottom() {
     const container = document.getElementById('chatMessages');
-    if (container) {
-        setTimeout(() => container.scrollTop = container.scrollHeight, 100);
-    }
+    if (container) setTimeout(() => { container.scrollTop = container.scrollHeight; }, 50);
 }
-
-// ============================================
-// SEND CHAT MESSAGE
-// ============================================
 
 async function sendChatMessage() {
     const input = document.getElementById('chatInput');
-    if (!input) return;
-    
-    const text = input.value.trim();
-    if (!text) return;
-    if (!currentUser) {
-        showToast('Please login to send messages', 'error');
-        return;
-    }
-    
+    const text = input?.value.trim();
+    if (!text || !currentUser) return;
     const sendBtn = document.getElementById('chatSendBtn');
     input.disabled = true;
     if (sendBtn) sendBtn.disabled = true;
-    
     try {
+        const direct = activeChat.type === 'direct';
         await db.collection('chat_messages').add({
-            text: text,
-            userId: currentUser.uid,
-            userName: currentUser.email?.split('@')[0] || 'User',
-            userEmail: currentUser.email,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            text, userId: currentUser.uid, userName: currentUser.email?.split('@')[0] || 'User', userEmail: currentUser.email,
+            conversationType: direct ? 'direct' : 'team',
+            participants: direct ? [currentUser.uid, activeChat.userId].sort() : [],
+            readBy: [currentUser.uid], timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         input.value = '';
-    } catch (error) {
-        console.error('Send error:', error);
-        if (error.code === 'permission-denied') {
-            showToast('Send failed: insufficient Firestore permissions. Contact admin.', 'error');
-            const chatInput = document.getElementById('chatInput');
-            const chatSendBtn = document.getElementById('chatSendBtn');
-            if (chatInput) chatInput.disabled = true;
-            if (chatSendBtn) chatSendBtn.disabled = true;
-            return;
-        }
-        showToast('Failed to send: ' + error.message, 'error');
-    } finally {
-        input.disabled = false;
-        if (sendBtn) sendBtn.disabled = false;
-        input.focus();
-    }
+        if (!await waitForChatWrite()) showToast('Message is queued but not synced. Allow firestore.googleapis.com in your browser blocker.', 'warning');
+    } catch (error) { showToast('Failed to send: ' + error.message, 'error');
+    } finally { input.disabled = false; if (sendBtn) sendBtn.disabled = false; input.focus(); }
 }
 
-// ============================================
-// UNREAD MESSAGE TRACKING
-// ============================================
+async function editChatMessage(id) {
+    const message = chatMessages.find(item => item.id === id);
+    if (!message || message.userId !== currentUser?.uid) return;
+    const result = await Swal.fire({ title: 'Edit message', input: 'text', inputValue: message.text, inputAttributes: { maxlength: 2000 }, showCancelButton: true, confirmButtonText: 'Save' });
+    const text = result.value?.trim();
+    if (!result.isConfirmed || !text || text === message.text) return;
+    try {
+        await db.collection('chat_messages').doc(id).update({ text, editedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        if (!await waitForChatWrite()) showToast('Edit is queued but not synced. Allow firestore.googleapis.com in your browser blocker.', 'warning');
+    }
+    catch (error) { showToast('Unable to edit message: ' + error.message, 'error'); }
+}
+
+async function unsendChatMessage(id) {
+    const message = chatMessages.find(item => item.id === id);
+    if (!message || message.userId !== currentUser?.uid) return;
+    const result = await Swal.fire({ title: 'Unsend this message?', text: 'It will be removed for everyone.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Unsend', confirmButtonColor: '#ef4444' });
+    if (!result.isConfirmed) return;
+    try {
+        await db.collection('chat_messages').doc(id).delete();
+        if (await waitForChatWrite()) showToast('Message unsent', 'success');
+        else showToast('Unsend is queued but not synced. Allow firestore.googleapis.com in your browser blocker.', 'warning');
+    }
+    catch (error) { showToast('Unable to unsend message: ' + error.message, 'error'); }
+}
 
 function updateUnreadCount() {
-    if (!currentUser) return;
-    unreadCount = chatMessages.filter(msg => {
-        // Unread if: not from current user AND (no readBy array OR current user not in readBy)
-        return msg.userId !== currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid));
-    }).length;
-    updateChatBadge();
-}
-
-function updateChatBadge() {
+    unreadCount = chatMessages.filter(msg => isMessageVisibleToUser(msg) && msg.userId !== currentUser?.uid && (!msg.readBy || !msg.readBy.includes(currentUser?.uid))).length;
     const badge = document.getElementById('chatBadge');
-    if (!badge) return;
-    if (unreadCount > 0) {
-        badge.textContent = unreadCount;
-        badge.style.display = 'flex';
-    } else {
-        badge.style.display = 'none';
-    }
+    if (badge) { badge.textContent = unreadCount; badge.style.display = unreadCount ? 'flex' : 'none'; }
 }
 
 async function markAllMessagesAsRead() {
-    if (!db || !currentUser || !chatMessages.length) return;
-    const messagesForThisUser = chatMessages.filter(msg => msg.userId !== currentUser.uid);
-    
-    // Batch update messages to add current user to readBy array
+    if (!db || !currentUser) return;
+    const unread = chatMessages.filter(msg => messageMatchesActiveChat(msg) && msg.userId !== currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid)));
+    if (!unread.length) return;
     const batch = db.batch();
-    messagesForThisUser.forEach(msg => {
-        const docRef = db.collection('chat_messages').doc(msg.id);
-        const readBy = msg.readBy || [];
-        if (!readBy.includes(currentUser.uid)) {
-            readBy.push(currentUser.uid);
-            batch.update(docRef, { readBy: readBy });
-        }
-    });
-    
-    try {
-        await batch.commit();
-        unreadCount = 0;
-        updateChatBadge();
-    } catch (error) {
-        console.warn('Error marking messages as read:', error);
-    }
+    unread.forEach(msg => batch.update(db.collection('chat_messages').doc(msg.id), { readBy: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) }));
+    try { await batch.commit(); } catch (error) { console.warn('Unable to mark messages read:', error.message); }
 }
 
-// ============================================
-// HANDLE CHAT KEYDOWN
-// ============================================
+// Firestore applies offline changes locally first. Wait briefly for the server so
+// chat never reports a successful edit/unsend when a browser extension blocked it.
+async function waitForChatWrite(timeoutMs = 5000) {
+    if (!db?.waitForPendingWrites) return true;
+    try {
+        return await Promise.race([
+            db.waitForPendingWrites().then(() => true),
+            new Promise(resolve => setTimeout(() => resolve(false), timeoutMs))
+        ]);
+    } catch (error) {
+        console.warn('Chat write did not sync:', error.message);
+        return false;
+    }
+}
 
 function handleChatKeydown(event) {
-    if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        sendChatMessage();
-    }
+    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendChatMessage(); }
 }
-
-console.log('✅ Chat.js loaded (simplified)');

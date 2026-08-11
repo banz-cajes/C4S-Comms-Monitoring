@@ -108,6 +108,17 @@ auth.onAuthStateChanged(async (user) => {
                 canViewAll: userRole === 'admin' || userRole === 'approver',
                 canManageUsers: userRole === 'admin'
             };
+            // Keep a minimal, role-free directory record for direct chat.
+            // Failure here must not block normal sign-in or app access.
+            try {
+                await db.collection('chat_profiles').doc(user.uid).set({
+                    name: user.email.split('@')[0],
+                    email: user.email,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            } catch (profileError) {
+                console.warn('Unable to update chat profile:', profileError.message);
+            }
             updateUIForUser();
             document.getElementById('appContainer').style.display = 'block';
 

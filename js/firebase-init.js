@@ -18,6 +18,10 @@ try {
     // Initialize Firestore
     db = firebase.firestore();
 
+    // Detect restrictive proxies and fall back to long-polling when needed.
+    // This must be configured before Firestore performs reads or writes.
+    db.settings({ experimentalAutoDetectLongPolling: true });
+
     // Enable persistence
     db.enablePersistence({ synchronizeTabs: true })
         .then(() => {

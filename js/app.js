@@ -64,6 +64,9 @@ function initApp() {
     const form = document.getElementById('comms-form');
     if (form) form.addEventListener('submit', handleFormSubmit);
 
+    const typeSelect = document.getElementById('type');
+    if (typeSelect) typeSelect.addEventListener('change', toggleRecurrenceFields);
+
     const searchInput = document.getElementById('searchInput');
     if (searchInput) searchInput.addEventListener('input', () => renderTable());
 
@@ -427,6 +430,7 @@ function renderTable() {
                     <div class="subject-with-type">
                         <div class="comm-subject">${escapeHtml(comm.subject || 'N/A')}</div>
                         <div class="comm-type">${escapeHtml(comm.type || 'Radio Message')}</div>
+                        ${getRecurrenceDisplay(comm)}
                     </div>
                 </td>
                 <td>
@@ -500,6 +504,18 @@ function getCombinedStatusDisplay(status, releaseInfo) {
         'rejected': '<span class="status-badge rejected"><i class="fas fa-times-circle"></i> Rejected</span>'
     };
     return badges[status] || badges.pending;
+}
+
+function getRecurrenceDisplay(comm) {
+    if (comm.type !== 'Report' || !comm.recurrence || comm.recurrence === 'none') return '';
+    const labels = { weekly: 'Weekly', monthly: 'Monthly', semi_annual: 'Semi-annual', annually: 'Annual' };
+    const due = comm.nextDueDate ? ` · Next: ${formatRecurrenceDate(comm.nextDueDate)}` : '';
+    return `<div class="recurrence-badge"><i class="fas fa-repeat"></i> ${labels[comm.recurrence] || comm.recurrence}${due}</div>`;
+}
+
+function formatRecurrenceDate(value) {
+    const date = new Date(`${value}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? escapeHtml(value) : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function getComplianceDisplay(compliance = [], commId) {
@@ -750,6 +766,8 @@ function handleFormSubmit(e) {
     const type = document.getElementById('type').value;
     const subject = sanitizeInput(document.getElementById('subject').value);
     const remarks = sanitizeInput(document.getElementById('remarks').value);
+    const recurrence = type === 'Report' ? document.getElementById('recurrence').value : 'none';
+    const recurrenceStartDate = type === 'Report' ? document.getElementById('recurrenceStartDate').value : '';
 
     if (!nr || nr === '...') {
         showToast('Please wait for NR number to generate', 'error');
@@ -758,6 +776,11 @@ function handleFormSubmit(e) {
 
     if (!type || !subject) {
         showToast('Please fill required fields', 'error');
+        return;
+    }
+
+    if (recurrence !== 'none' && !recurrenceStartDate) {
+        showToast('Choose the first due date for this recurring report', 'error');
         return;
     }
 
@@ -774,6 +797,9 @@ function handleFormSubmit(e) {
         subject,
         remarks: remarks || '',
         distribution,
+        recurrence,
+        recurrenceStartDate: recurrenceStartDate || null,
+        nextDueDate: recurrence !== 'none' ? recurrenceStartDate : null,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
@@ -835,6 +861,9 @@ window.editLog = async (id) => {
         document.getElementById('type').value = d.type || 'Radio Message';
         document.getElementById('subject').value = d.subject || '';
         document.getElementById('remarks').value = d.remarks || '';
+        document.getElementById('recurrence').value = d.recurrence || 'none';
+        document.getElementById('recurrenceStartDate').value = d.recurrenceStartDate || d.nextDueDate || '';
+        toggleRecurrenceFields();
         const distribution = d.distribution || [];
         document.querySelectorAll('#distributionCheckboxes input').forEach(cb => { cb.checked = distribution.includes(cb.value); });
         document.getElementById('form-container').classList.add('active');
@@ -842,6 +871,18 @@ window.editLog = async (id) => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) { showToast('Error loading', 'error'); }
 };
+
+function toggleRecurrenceFields() {
+    const isReport = document.getElementById('type')?.value === 'Report';
+    const recurrenceGroup = document.getElementById('recurrenceGroup');
+    const dateGroup = document.getElementById('recurrenceStartGroup');
+    if (recurrenceGroup) recurrenceGroup.style.display = isReport ? '' : 'none';
+    if (dateGroup) dateGroup.style.display = isReport ? '' : 'none';
+    if (!isReport) {
+        document.getElementById('recurrence').value = 'none';
+        document.getElementById('recurrenceStartDate').value = '';
+    }
+}
 
 // ============================================
 // DELETE LOG

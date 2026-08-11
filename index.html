@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>C4 SYSTEMS | Communication Workflow</title>
+    <link rel="icon" type="image/png" href="logo.png">
 
     <!-- External Libraries -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -559,6 +560,7 @@
                                         <option value="Memo">Memo</option>
                                         <option value="Report">Report</option>
                                     </select>
+                                    <small class="form-help">Choose <strong>Report</strong> to show its recurring schedule options.</small>
                                 </div>
                                 <div class="form-group full-width">
                                     <label>Subject</label>
@@ -567,6 +569,20 @@
                                 <div class="form-group full-width">
                                     <label>Remarks / Notes</label>
                                     <textarea id="remarks" rows="3" placeholder="Add remarks or notes..." onkeydown="handleFormRemarksKeydown(event)"></textarea>
+                                </div>
+                                <div class="form-group" id="recurrenceGroup" style="display:none;">
+                                    <label>Report recurrence</label>
+                                    <select id="recurrence">
+                                        <option value="none">One-time report</option>
+                                        <option value="weekly">Weekly</option>
+                                        <option value="monthly">Monthly</option>
+                                        <option value="semi_annual">Semi-annual</option>
+                                        <option value="annually">Annually</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="recurrenceStartGroup" style="display:none;">
+                                    <label>First due date</label>
+                                    <input type="date" id="recurrenceStartDate">
                                 </div>
                             </div>
                             <div class="distribution-container">
@@ -1186,12 +1202,18 @@
     <div class="chat-header">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
             <i class="fas fa-comment-dots" style="color: white;"></i>
-            <span style="color: white; font-weight: 600; font-size: 0.9rem;">Team Chat</span>
+            <span id="chatTitle" style="color: white; font-weight: 600; font-size: 0.9rem;">Team Chat</span>
             <span style="font-size: 0.6rem; color: #34d399; background: rgba(52, 211, 153, 0.2); padding: 0.1rem 0.5rem; border-radius: 12px;">● Online</span>
         </div>
         <button onclick="toggleChat()" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem;">
             <i class="fas fa-times"></i>
         </button>
+    </div>
+    <div class="chat-conversation-bar">
+        <button type="button" class="chat-conversation active" id="teamChatButton" onclick="selectTeamChat()"><i class="fas fa-users"></i> Team</button>
+        <select id="chatRecipient" class="chat-recipient" onchange="selectDirectChat(this.value)">
+            <option value="">Direct message…</option>
+        </select>
     </div>
     
     <div class="chat-messages" id="chatMessages">
@@ -1204,13 +1226,13 @@
     
     <div class="chat-input-area">
         <div style="display: flex; gap: 0.5rem; width: 100%;">
-            <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." onkeydown="handleChatKeydown(event)">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Message the team..." onkeydown="handleChatKeydown(event)">
             <button onclick="sendChatMessage()" class="chat-send-btn" id="chatSendBtn">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 0.25rem; font-size: 0.55rem; color: var(--gray-400);">
-            <span><i class="fas fa-lock" style="font-size: 0.45rem;"></i> End-to-end encrypted</span>
+            <span><i class="fas fa-user-shield" style="font-size: 0.45rem;"></i> Team and direct messages</span>
             <span id="chatTypingIndicator" style="display: none;">Someone is typing...</span>
         </div>
     </div>
