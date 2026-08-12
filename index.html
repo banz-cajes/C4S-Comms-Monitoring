@@ -20,6 +20,8 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/dark-theme.css">
+    <link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#3b82f6">
 
     <!-- Firebase Config - LOAD IN ORDER: config-loader → config.json (optional) → firebase-config -->
     <script src="config-loader.js"></script>
@@ -174,6 +176,9 @@
                     </div>
                 </div>
             </aside>
+
+            <!-- Add this right after your sidebar closing tag -->
+            <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
 
             <!-- Main Content -->
             <main class="main-content">

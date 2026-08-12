@@ -1966,3 +1966,66 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+
+
+// ============================================
+// MOBILE SIDEBAR TOGGLE
+// ============================================
+
+function toggleMobileSidebar() {
+    const sidebar = document.getElementById('mainSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    if (!sidebar || !overlay) {
+        // Create overlay dynamically if not in HTML
+        const overlayDiv = document.createElement('div');
+        overlayDiv.id = 'sidebarOverlay';
+        overlayDiv.className = 'sidebar-overlay';
+        overlayDiv.onclick = toggleMobileSidebar;
+        document.body.appendChild(overlayDiv);
+        
+        // Toggle again after creating
+        setTimeout(toggleMobileSidebar, 10);
+        return;
+    }
+    
+    sidebar.classList.toggle('mobile-open');
+    overlay.classList.toggle('active');
+    
+    // Prevent body scroll when sidebar is open
+    document.body.style.overflow = sidebar.classList.contains('mobile-open') ? 'hidden' : '';
+}
+
+// Auto-detect mobile and adjust sidebar behavior
+function initMobileSidebar() {
+    const sidebar = document.getElementById('mainSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    // If on mobile, make sidebar hidden by default
+    if (window.innerWidth <= 767) {
+        if (sidebar) sidebar.classList.remove('mobile-open');
+        if (overlay) overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+// Listen to resize events
+window.addEventListener('resize', initMobileSidebar);
+
+// Close sidebar when clicking outside
+document.addEventListener('click', function(e) {
+    const sidebar = document.getElementById('mainSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const toggleBtn = document.querySelector('.toggle-sidebar-btn');
+    
+    if (sidebar && sidebar.classList.contains('mobile-open') && 
+        !sidebar.contains(e.target) && 
+        !toggleBtn?.contains(e.target) &&
+        window.innerWidth <= 767) {
+        toggleMobileSidebar();
+    }
+});
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', initMobileSidebar);
