@@ -99,17 +99,21 @@ auth.onAuthStateChanged(async (user) => {
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
             }
+            
+            // ============================================
+            // FIXED PERMISSIONS - ALL USERS CAN VIEW DATA
+            // ============================================
             permissions = {
-                canCreate: userRole === 'admin' || userRole === 'creator',
+                canCreate: userRole === 'admin' || userRole === 'creator' || userRole === 'approver',
                 canEdit: userRole === 'admin' || userRole === 'creator',
                 canDelete: userRole === 'admin',
                 canApprove: userRole === 'admin' || userRole === 'approver',
                 canRelease: userRole === 'admin' || userRole === 'approver',
-                canViewAll: userRole === 'admin' || userRole === 'approver',
+                canViewAll: true,  // ALL roles can view all communications
                 canManageUsers: userRole === 'admin'
             };
+            
             // Keep a minimal, role-free directory record for direct chat.
-            // Failure here must not block normal sign-in or app access.
             try {
                 await db.collection('chat_profiles').doc(user.uid).set({
                     name: user.email.split('@')[0],
@@ -119,6 +123,16 @@ auth.onAuthStateChanged(async (user) => {
             } catch (profileError) {
                 console.warn('Unable to update chat profile:', profileError.message);
             }
+            
+            // One administrator sign-in safely backfills the minimal chat directory
+            if (userRole === 'admin') {
+                try {
+                    await backfillChatProfiles();
+                } catch (profileError) {
+                    console.warn('Unable to backfill chat profiles:', profileError.message);
+                }
+            }
+            
             updateUIForUser();
             document.getElementById('appContainer').style.display = 'block';
 
@@ -138,16 +152,59 @@ auth.onAuthStateChanged(async (user) => {
         }
     } else {
         localStorage.removeItem('c4_current_user');
-        window.location.href = 'login.html';
+        const isLoginPage = window.location.pathname.includes('login.html');
+        if (!isLoginPage && !sessionStorage.getItem('logout_in_progress')) {
+            window.location.href = 'login.html';
+        }
     }
 });
+
+async function backfillChatProfiles() {
+    if (!db || userRole !== 'admin') return;
+    const users = await db.collection('users').get();
+    const profiles = await db.collection('chat_profiles').get();
+    const existing = new Set(profiles.docs.map(doc => doc.id));
+    const missingUsers = users.docs.filter(doc => !existing.has(doc.id));
+
+    for (let start = 0; start < missingUsers.length; start += 450) {
+        const batch = db.batch();
+        missingUsers.slice(start, start + 450).forEach(doc => {
+            const data = doc.data();
+            const email = data.email || '';
+            batch.set(db.collection('chat_profiles').doc(doc.id), {
+                name: data.name || email.split('@')[0] || 'User',
+                email,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        });
+        await batch.commit();
+    }
+}
 
 function updateUIForUser() {
     document.getElementById('userName').textContent = currentUser?.email?.split('@')[0] || 'User';
     document.getElementById('userAvatar').textContent = (currentUser?.email?.charAt(0) || 'U').toUpperCase();
     
+    // Show/hide New Communication button based on permissions
     const newCommBtn = document.getElementById('newCommBtn');
-    if (newCommBtn) newCommBtn.style.display = permissions.canCreate ? 'flex' : 'none';
+    if (newCommBtn) {
+        newCommBtn.style.display = permissions.canCreate ? 'flex' : 'none';
+    }
+    
+    // Add role class to body for CSS targeting
+    document.body.classList.remove('role-admin', 'role-approver', 'role-creator', 'role-viewer');
+    document.body.classList.add(`role-${userRole}`);
+    
+    // Hide action buttons for viewers via CSS class
+    if (userRole === 'viewer') {
+        document.querySelectorAll('.action-btn.approve, .action-btn.delete, .action-btn.release, .remarks-edit-btn').forEach(btn => {
+            btn.style.display = 'none';
+        });
+        // Hide bulk action buttons
+        document.querySelectorAll('.bulk-actions .btn-danger, .bulk-actions .btn-success, .bulk-actions .btn-info').forEach(btn => {
+            btn.style.display = 'none';
+        });
+    }
     
     const roleBadge = document.querySelector('#userRole .role-badge');
     if (roleBadge) {

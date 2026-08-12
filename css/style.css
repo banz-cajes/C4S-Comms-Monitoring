@@ -2654,3 +2654,5 @@ body.dark-theme .chat-input:focus {
 
 body.dark-theme .chat-conversation, body.dark-theme .chat-recipient { background: var(--bg-input); border-color: var(--border-color); color: var(--text-primary); }
 body.dark-theme .chat-conversation.active { background: #2563eb; color: #fff; }
+
+

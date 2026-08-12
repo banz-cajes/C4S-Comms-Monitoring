@@ -142,12 +142,14 @@ async function sendChatMessage() {
     if (sendBtn) sendBtn.disabled = true;
     try {
         const direct = activeChat.type === 'direct';
-        await db.collection('chat_messages').add({
+        const message = {
             text, userId: currentUser.uid, userName: currentUser.email?.split('@')[0] || 'User', userEmail: currentUser.email,
             conversationType: direct ? 'direct' : 'team',
             participants: direct ? [currentUser.uid, activeChat.userId].sort() : [],
             readBy: [currentUser.uid], timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        };
+        const reference = await db.collection('chat_messages').add(message);
+        applyLocalChatMessage({ id: reference.id, ...message, timestamp: new Date() });
         input.value = '';
         if (!await waitForChatWrite()) showToast('Message is queued but not synced. Allow firestore.googleapis.com in your browser blocker.', 'warning');
     } catch (error) { showToast('Failed to send: ' + error.message, 'error');
@@ -162,6 +164,7 @@ async function editChatMessage(id) {
     if (!result.isConfirmed || !text || text === message.text) return;
     try {
         await db.collection('chat_messages').doc(id).update({ text, editedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        applyLocalChatMessage({ ...message, text, editedAt: new Date() });
         if (!await waitForChatWrite()) showToast('Edit is queued but not synced. Allow firestore.googleapis.com in your browser blocker.', 'warning');
     }
     catch (error) { showToast('Unable to edit message: ' + error.message, 'error'); }
@@ -174,6 +177,7 @@ async function unsendChatMessage(id) {
     if (!result.isConfirmed) return;
     try {
         await db.collection('chat_messages').doc(id).delete();
+        removeLocalChatMessage(id);
         if (await waitForChatWrite()) showToast('Message unsent', 'success');
         else showToast('Unsend is queued but not synced. Allow firestore.googleapis.com in your browser blocker.', 'warning');
     }
@@ -193,6 +197,22 @@ async function markAllMessagesAsRead() {
     const batch = db.batch();
     unread.forEach(msg => batch.update(db.collection('chat_messages').doc(msg.id), { readBy: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) }));
     try { await batch.commit(); } catch (error) { console.warn('Unable to mark messages read:', error.message); }
+}
+
+// Keep the UI responsive even when Firestore's real-time channel is reconnecting.
+// Snapshot listeners remain the source of truth and reconcile these local changes.
+function applyLocalChatMessage(message) {
+    chatMessageMap.set(message.id, message);
+    chatMessages = [...chatMessageMap.values()].sort((a, b) => getMessageTime(a) - getMessageTime(b));
+    renderChatMessages();
+    updateUnreadCount();
+}
+
+function removeLocalChatMessage(id) {
+    chatMessageMap.delete(id);
+    chatMessages = chatMessages.filter(message => message.id !== id);
+    renderChatMessages();
+    updateUnreadCount();
 }
 
 // Firestore applies offline changes locally first. Wait briefly for the server so

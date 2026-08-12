@@ -129,3 +129,60 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
+
+
+// ============================================
+// NETWORK STATUS HELPERS
+// ============================================
+
+// Check if Firestore is connected
+function isFirestoreConnected() {
+    return window.isFirestoreConnected !== false;
+}
+
+// Update connection status UI
+function updateConnectionStatus(status, message) {
+    const dot = document.getElementById('connectionDot');
+    const text = document.getElementById('connectionText');
+    const container = document.getElementById('connectionStatus');
+    
+    if (!dot || !text || !container) return;
+    
+    container.className = 'connection-status';
+    
+    switch(status) {
+        case 'online':
+            dot.style.background = '#10b981';
+            text.textContent = message || 'Online';
+            container.classList.remove('offline', 'connecting');
+            break;
+        case 'offline':
+            dot.style.background = '#ef4444';
+            text.textContent = message || 'Offline';
+            container.classList.add('offline');
+            break;
+        case 'connecting':
+            dot.style.background = '#f59e0b';
+            text.textContent = message || 'Connecting...';
+            container.classList.add('connecting');
+            break;
+        default:
+            dot.style.background = '#94a3b8';
+            text.textContent = message || 'Unknown';
+    }
+}
+
+// Monitor network status
+if (typeof window !== 'undefined') {
+    window.addEventListener('online', () => {
+        updateConnectionStatus('online', 'Online');
+        // Try to reconnect Firestore
+        if (typeof setupRealtimeListener === 'function') {
+            setTimeout(setupRealtimeListener, 1000);
+        }
+    });
+    
+    window.addEventListener('offline', () => {
+        updateConnectionStatus('offline', 'Offline');
+    });
+}

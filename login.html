@@ -384,6 +384,90 @@
                 window.location.href = 'index.html';
             }
         });
+
+// Add this before the handleLogin function
+
+// Check if user exists in Firestore, create if not
+async function ensureUserProfile(user) {
+    try {
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        if (!userDoc.exists) {
+            await db.collection('users').doc(user.uid).set({
+                name: user.email.split('@')[0],
+                email: user.email,
+                role: 'viewer',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        return true;
+    } catch (error) {
+        console.warn('Could not create user profile:', error);
+        return false;
+    }
+}
+
+// Replace the existing handleLogin function
+async function handleLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const loginBtn = document.getElementById('loginBtn');
+
+    if (!email || !password) {
+        showToast('Please enter email and password', 'error');
+        return;
+    }
+
+    const originalText = loginBtn.innerHTML;
+    loginBtn.innerHTML = '<span class="loading-spinner"></span> Signing in...';
+    loginBtn.disabled = true;
+
+    try {
+        // First try to sign in
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        
+        // Ensure user profile exists
+        await ensureUserProfile(userCredential.user);
+
+        showToast('Login successful! Redirecting...', 'success');
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 500);
+
+    } catch (error) {
+        let message = 'Login failed';
+        
+        // More specific error messages
+        switch (error.code) {
+            case 'auth/user-not-found':
+                message = 'No account found with this email. Please contact administrator.';
+                break;
+            case 'auth/wrong-password':
+                message = 'Incorrect password. Please try again.';
+                break;
+            case 'auth/invalid-email':
+                message = 'Invalid email format.';
+                break;
+            case 'auth/too-many-requests':
+                message = 'Too many attempts. Please try again later.';
+                break;
+            case 'auth/user-disabled':
+                message = 'This account has been disabled. Contact administrator.';
+                break;
+            case 'auth/network-request-failed':
+                message = 'Network error. Please check your connection.';
+                break;
+            default:
+                message = 'Login failed: ' + (error.message || 'Unknown error');
+        }
+        
+        showToast(message, 'error');
+        console.error('Login error:', error);
+    } finally {
+        loginBtn.innerHTML = originalText;
+        loginBtn.disabled = false;
+    }
+}
+
     </script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </body>

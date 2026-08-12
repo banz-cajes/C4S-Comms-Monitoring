@@ -351,6 +351,43 @@ function openEditUserModal(userId) {
     });
 }
 
+async function deleteUser(userId) {
+    if (!db) return showToast('Firestore not initialized', 'error');
+    
+    const result = await Swal.fire({
+        title: 'Delete User?',
+        text: 'This will permanently remove the user from both Auth and Firestore.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel'
+    });
+    
+    if (!result.isConfirmed) return;
+    
+    showLoading();
+    try {
+        // 1. Delete from Firestore
+        await db.collection('users').doc(userId).delete();
+        await db.collection('chat_profiles').doc(userId).delete();
+        
+        // 2. Delete from Firebase Auth (requires admin SDK - use a callable function or Cloud Function)
+        // Note: Deleting Auth users from client is not allowed for security reasons.
+        // You need a Cloud Function for this.
+        // For now, we'll just delete the Firestore records.
+        
+        showToast('✅ User profile deleted! (Auth account must be disabled manually via Firebase Console)', 'success');
+        loadUsersIntoSettings();
+    } catch (error) {
+        console.error('Delete user error:', error);
+        showToast('Failed to delete user: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+
 function confirmDeleteUser(userId) {
     Swal.fire({
         title: 'Delete User?',
@@ -422,6 +459,10 @@ function openCreateUserModal() {
 }
 
 // Create a user document (note: does NOT create Firebase Auth user)
+// ============================================
+// CREATE USER - WITH FIREBASE AUTH
+// ============================================
+
 async function createUser() {
     if (typeof permissions !== 'undefined' && !permissions.canManageUsers) {
         return showToast('You do not have permission to create users.', 'error');
@@ -434,28 +475,69 @@ async function createUser() {
     const role = document.getElementById('newUserRole')?.value || 'viewer';
 
     if (!name || !email) return showToast('Name and email are required', 'error');
-    if (password && password !== confirm) return showToast('Passwords do not match', 'error');
+    if (!password || password.length < 6) return showToast('Password must be at least 6 characters', 'error');
+    if (password !== confirm) return showToast('Passwords do not match', 'error');
 
-    // Create a user document in /users. Inform admin if Auth account is needed.
     if (!db) return showToast('Firestore not initialized', 'error');
 
+    // Show loading
+    const btn = document.querySelector('#createUserModal .btn-primary');
+    const originalText = btn?.innerHTML;
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        btn.disabled = true;
+    }
+
     try {
-        // Use email as document id if possible (replace @ with _)
-        const userId = null; // let Firestore generate id
-        const data = {
+        // 1. CREATE FIREBASE AUTH USER
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const uid = userCredential.user.uid;
+
+        // 2. CREATE USER PROFILE IN FIRESTORE
+        const userData = {
             name: sanitizeInput(name),
             email: sanitizeInput(email),
             role: role,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            createdBy: currentUser?.uid || 'system'
         };
 
-        await db.collection('users').add(data);
-        showToast('User record created. Note: this does not create an Auth account.', 'success');
+        await db.collection('users').doc(uid).set(userData);
+
+        // 3. CREATE CHAT PROFILE
+        await db.collection('chat_profiles').doc(uid).set({
+            name: sanitizeInput(name),
+            email: sanitizeInput(email),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        // 4. SEND EMAIL VERIFICATION (optional but recommended)
+        try {
+            await userCredential.user.sendEmailVerification();
+        } catch (verifyError) {
+            console.warn('Could not send verification email:', verifyError);
+        }
+
+        showToast(`✅ User "${name}" created successfully!`, 'success');
         closeModal('createUserModal');
         loadUsersIntoSettings();
+
     } catch (error) {
         console.error('Create user error:', error);
-        showToast('Failed to create user: ' + error.message, 'error');
+        let message = 'Failed to create user';
+        if (error.code === 'auth/email-already-in-use') {
+            message = 'Email already registered. Please use a different email.';
+        } else if (error.code === 'auth/weak-password') {
+            message = 'Password is too weak. Use at least 6 characters.';
+        } else if (error.code === 'auth/invalid-email') {
+            message = 'Invalid email format.';
+        }
+        showToast(message, 'error');
+    } finally {
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
     }
 }
 

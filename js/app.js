@@ -1,3 +1,5 @@
+
+
 // ============================================
 // C4 SYSTEMS - Main Application
 // ============================================
@@ -83,7 +85,7 @@ function initApp() {
 }
 
 // ============================================
-// REALTIME LISTENER
+// REALTIME LISTENER - FIXED
 // ============================================
 
 function setupRealtimeListener() {
@@ -95,16 +97,17 @@ function setupRealtimeListener() {
         .onSnapshot(snapshot => {
             try {
                 let comms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (!permissions.canViewAll) {
-                    comms = comms.filter(comm => comm.createdBy === currentUser?.uid);
-                }
+                
+                // DON'T filter for viewers - they can view all communications
+                // Only filter if user is NOT an admin/approver AND has canViewAll = false
+                // But since we set canViewAll to true for all roles above, this filter is now redundant
+                // Keep it only for debugging or remove it
+                
                 allCommunications = comms;
                 updateStats();
                 renderTable();
                 
-                // ============================================
-                // FIX: Update compliance badge on data change
-                // ============================================
+                // Update compliance badge
                 updateComplianceBadge();
 
                 const analyticsView = document.getElementById('analyticsView');
