@@ -23,11 +23,21 @@
     <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#3b82f6">
 
-    <!-- Firebase Config - LOAD IN ORDER: config-loader → config.json (optional) → firebase-config -->
-    <script src="config-loader.js"></script>
-    <!-- Optional: Load config from external config.json file (for environment-specific values) -->
-    <!-- <script>loadConfigFromJSON('config.json');</script> -->
-    <script src="firebase-config.js"></script>
+
+<!-- ====== SECURE CONFIG LOADING ====== -->
+<!-- 1. Set the API Key globally (You can change this here for different environments) -->
+<script>
+    // IMPORTANT: Replace this with your actual key if it changes.
+    // This is safe to expose because the API key is restricted in Google Cloud Console.
+    window.FIREBASE_API_KEY = 'AIzaSyAxjoyWIO6Cd4iyh73IGJ7FE01gaf58GfU';
+</script>
+
+<!-- 2. Load the config loader (optional, for JSON fallback) -->
+<script src="config-loader.js"></script>
+
+<!-- 3. Load the main firebase config -->
+<script src="firebase-config.js"></script>
+
 </head>
 <body>
 
