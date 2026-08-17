@@ -3125,13 +3125,337 @@ body.dark-theme .chat-conversation.active { background: #2563eb; color: #fff; }
     display: block;
 }
 
-/* ===== MOBILE SIDEBAR TOGGLE JAVASCRIPT SUPPORT ===== */
-/* Add this function to your app.js or a script tag in index.html */
-/* 
-function toggleMobileSidebar() {
-    const sidebar = document.getElementById('mainSidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    sidebar.classList.toggle('mobile-open');
-    overlay.classList.toggle('active');
+
+/* ============================================
+   FIX: AUTO-ADJUST TABLE SPACE (Remove Scrollbars)
+   ============================================ */
+
+/* Allow the table to expand based on content instead of fixed min-widths */
+table {
+    width: 100%;
+    table-layout: auto !important;  /* CRITICAL: Auto-adjust widths */
+    min-width: auto !important;     /* Remove the forced 1170px/800px widths */
+    border-collapse: collapse;
+    font-size: 0.75rem;
 }
-*/
+
+/* Remove fixed column widths so they auto-expand */
+th, td {
+    width: auto !important;
+    min-width: auto !important;
+    max-width: none !important;
+    padding: 0.6rem 0.8rem !important; /* Slightly more padding for breathing room */
+    vertical-align: middle;
+}
+
+/* --- SUBJECT COLUMN --- */
+.subject-with-type {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+}
+
+.comm-subject {
+    font-weight: 700;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--gray-800);
+    white-space: normal !important; /* Allow text to wrap to multiple lines */
+    word-break: break-word;
+    text-align: left;
+}
+
+.comm-type {
+    font-size: 0.6rem;
+    color: var(--gray-500);
+    background: var(--gray-100);
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    width: fit-content;
+}
+
+/* --- DISTRIBUTION COLUMN --- */
+.distribution-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 100%; /* Remove the 160px limit */
+}
+
+.dist-role {
+    padding: 0.1rem 0.4rem;
+    border-radius: 20px;
+    font-size: 0.55rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* --- COMPLIANCE COLUMN (REMOVES SCROLLBAR) --- */
+.compliance-list {
+    max-height: none !important; /* REMOVES the 70px limit causing scrollbars */
+    overflow-y: visible !important; /* REMOVES the scroll */
+    font-size: 0.6rem;
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.compliance-item {
+    padding: 4px 8px;
+    border-bottom: 1px dashed var(--gray-200);
+    background: white;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.compliance-item:hover {
+    background: var(--gray-100);
+    transform: translateX(2px);
+}
+
+.compliance-unit {
+    font-weight: 600;
+    font-size: 0.6rem;
+}
+
+.compliance-badge {
+    padding: 0.1rem 0.4rem;
+    border-radius: 20px;
+    font-size: 0.5rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* --- REMARKS COLUMN (REMOVES SCROLLBAR) --- */
+.remarks-cell {
+    max-width: none !important;
+    min-width: auto !important;
+    position: relative;
+}
+
+.remarks-cell > div {
+    white-space: normal !important; /* Allows text to wrap fully */
+    word-break: break-word;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    max-height: none !important; /* REMOVES the 60px limit */
+    overflow-y: visible !important; /* REMOVES scroll */
+}
+
+/* --- RESPONSIVE OVERRIDES (Mobile/Tablet) --- */
+@media (max-width: 768px) {
+    table {
+        min-width: auto !important; /* Let mobile tables shrink */
+        font-size: 0.65rem;
+    }
+    
+    th, td {
+        padding: 0.4rem 0.5rem !important;
+    }
+    
+    .comm-subject {
+        font-size: 0.7rem;
+    }
+}
+
+
+/* ============================================
+   FIX: STYLES FOR ALL COMMUNICATIONS TABLE ONLY
+   ============================================ */
+
+/* We apply these ONLY to the table inside #allCommsView */
+#allCommsView table {
+    width: 100%;
+    table-layout: auto !important;
+    min-width: auto !important;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+}
+
+#allCommsView th, 
+#allCommsView td {
+    width: auto !important;
+    min-width: auto !important;
+    max-width: none !important;
+    padding: 0.6rem 0.8rem !important;
+    vertical-align: middle;
+}
+
+/* NR Column - Keep small */
+#allCommsView th:nth-child(2), 
+#allCommsView td:nth-child(2) {
+    width: 60px !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* SUBJECT Column - Give it space */
+#allCommsView th:nth-child(3), 
+#allCommsView td:nth-child(3) {
+    width: 40% !important;
+    min-width: 300px !important;
+    max-width: none !important;
+}
+
+/* REMARKS Column - Smaller */
+#allCommsView th:nth-child(7), 
+#allCommsView td:nth-child(7) {
+    width: 12% !important;
+    min-width: 120px !important;
+    max-width: 250px !important;
+}
+
+/* Other columns in All Comms */
+#allCommsView th:nth-child(4), #allCommsView td:nth-child(4) { min-width: 140px; width: 15%; }
+#allCommsView th:nth-child(5), #allCommsView td:nth-child(5) { min-width: 120px; width: 13%; }
+#allCommsView th:nth-child(6), #allCommsView td:nth-child(6) { min-width: 120px; width: 13%; }
+#allCommsView th:nth-child(8), #allCommsView td:nth-child(8) { min-width: 100px; width: 10%; }
+
+/* Subject Content Wrapping */
+#allCommsView .subject-with-type {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+}
+
+#allCommsView .comm-subject {
+    font-weight: 700;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--gray-800);
+    white-space: normal !important;
+    word-break: break-word;
+    text-align: left;
+    padding-right: 10px;
+}
+
+/* Compliance List in All Comms (Remove scrollbars) */
+#allCommsView .compliance-list {
+    max-height: none !important;
+    overflow-y: visible !important;
+    font-size: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#allCommsView .compliance-item {
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    width: 100%;
+}
+
+#allCommsView .remarks-cell > div {
+    white-space: normal !important;
+    word-break: break-word;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    max-height: none !important;
+    overflow-y: visible !important;
+}
+
+/* ============================================
+   RESTORE COMPLIANCE VIEW TABLE STYLES
+   ============================================ */
+
+#complianceView table {
+    width: 100%;
+    table-layout: fixed !important; /* Compliance needs fixed layout */
+    min-width: 950px !important;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+}
+
+#complianceView th, 
+#complianceView td {
+    padding: 0.6rem 0.7rem !important;
+    vertical-align: middle;
+    white-space: normal;
+    word-break: break-word;
+}
+
+#complianceView th {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--gray-600);
+    background: var(--gray-50);
+    border-bottom: 2px solid var(--gray-200);
+}
+
+#complianceView th:nth-child(1), #complianceView td:nth-child(1) { width: 120px !important; min-width: 120px; }
+#complianceView th:nth-child(2), #complianceView td:nth-child(2) { width: 220px !important; min-width: 220px; }
+#complianceView th:nth-child(3), #complianceView td:nth-child(3) { width: 180px !important; min-width: 180px; }
+#complianceView th:nth-child(4), #complianceView td:nth-child(4) { width: 140px !important; min-width: 140px; }
+#complianceView th:nth-child(5), #complianceView td:nth-child(5) { width: 110px !important; min-width: 110px; }
+#complianceView th:nth-child(6), #complianceView td:nth-child(6) { width: 140px !important; min-width: 140px; }
+#complianceView th:nth-child(7), #complianceView td:nth-child(7) { width: 100px !important; min-width: 100px; }
+
+/* ============================================
+   MOBILE RESPONSIVE OVERRIDES
+   ============================================ */
+
+@media (max-width: 1024px) {
+    #allCommsView th:nth-child(3), #allCommsView td:nth-child(3) { min-width: 200px !important; width: 35%; }
+    #allCommsView th:nth-child(7), #allCommsView td:nth-child(7) { min-width: 80px !important; width: 12%; }
+}
+
+@media (max-width: 768px) {
+    #allCommsView .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #allCommsView table { min-width: 850px !important; font-size: 0.65rem; }
+    #allCommsView th:nth-child(3), #allCommsView td:nth-child(3) { min-width: 160px !important; }
+    #allCommsView th:nth-child(2), #allCommsView td:nth-child(2) { width: 40px !important; min-width: 40px !important; }
+    
+    /* On small screens, Compliance view just scrolls */
+    #complianceView .table-container { overflow-x: auto; }
+    #complianceView table { min-width: 700px !important; }
+}
+
+/* ============================================
+   FIX: REMOVE REQUIREMENTS COLUMN FROM COMPLIANCE
+   ============================================ */
+
+/* 1. Hide the "Requirements" column header and all its data cells */
+#complianceView th:nth-child(3),
+#complianceView td:nth-child(3) {
+    display: none !important;
+}
+
+/* 2. Recalculate column widths to give Subject 2x the space */
+#complianceView th:nth-child(1), #complianceView td:nth-child(1) { width: 120px !important; min-width: 120px; } /* Unit */
+#complianceView th:nth-child(2), #complianceView td:nth-child(2) { width: 450px !important; min-width: 450px; } /* Communication - MASSIVELY INCREASED */
+#complianceView th:nth-child(4), #complianceView td:nth-child(4) { width: 150px !important; min-width: 150px; } /* Target Date */
+#complianceView th:nth-child(5), #complianceView td:nth-child(5) { width: 110px !important; min-width: 110px; } /* Status */
+#complianceView th:nth-child(6), #complianceView td:nth-child(6) { width: 220px !important; min-width: 220px; } /* Submission */
+#complianceView th:nth-child(7), #complianceView td:nth-child(7) { width: 100px !important; min-width: 100px; } /* Actions */
+
+/* 3. Force the Subject text to wrap and show fully */
+#complianceView .compliance-comm-subject {
+    font-size: 0.8rem !important;
+    font-weight: 600;
+    color: var(--gray-800);
+    display: block !important; /* Remove the line-clamp limitation */
+    white-space: normal !important;
+    word-break: break-word;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.4;
+}
+
+/* 4. Ensure the NR number stays visible */
+#complianceView .compliance-comm-nr {
+    font-size: 0.65rem;
+    color: var(--gray-500);
+    margin-top: 2px;
+}
