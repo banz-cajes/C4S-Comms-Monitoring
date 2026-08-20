@@ -38,15 +38,15 @@ function renderComplianceView() {
                     if (status === 'submitted') {
                         const submissionDate = new Date(item.submissionDate);
                         if (submissionDate <= targetDate) {
-                            statusDisplay = 'On Time ✅';
+                            statusDisplay = 'On Time';
                         } else {
-                            statusDisplay = 'Late ⏰';
+                            statusDisplay = 'Late';
                         }
                     } else {
                         if (targetDate < now) {
-                            statusDisplay = '⚠️ OVERDUE';
+                            statusDisplay = 'OVERDUE';
                         } else {
-                            statusDisplay = '⏳ Pending';
+                            statusDisplay = 'Pending';
                         }
                     }
                     

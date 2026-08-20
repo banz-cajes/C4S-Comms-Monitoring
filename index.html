@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>C4 SYSTEMS | Communication Workflow</title>
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/dark-theme.css">
+    <link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#3b82f6">
+
+
+<!-- ====== SECURE CONFIG LOADING ====== -->
+<!-- 1. Set the API Key globally (You can change this here for different environments) -->
+<script>
+    // IMPORTANT: Replace this with your actual key if it changes.
+    // This is safe to expose because the API key is restricted in Google Cloud Console.
+    window.FIREBASE_API_KEY = 'AIzaSyAxjoyWIO6Cd4iyh73IGJ7FE01gaf58GfU';
+</script>
+
+<!-- 2. Load the config loader (optional, for JSON fallback) -->
+<script src="config-loader.js"></script>
+
+<!-- 3. Load the main firebase config -->
+<script src="firebase-config.js"></script>
+
+</head>
+<body>
+
+    <!-- ============================================ -->
+    <!-- SESSION WARNING MODAL                         -->
+    <!-- ============================================ -->
+    <div id="sessionWarning" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 350px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-clock"></i> Session Expiring Soon</h3>
+                <button class="close-btn" onclick="closeModal('sessionWarning')">&times;</button>
+            </div>
+            <div style="text-align: center; padding: 1rem;">
+                <p>Your session will expire in <span id="sessionTimer">5:00</span></p>
+                <p style="font-size: 0.8rem; color: var(--gray-500); margin-top: 0.5rem;">
+                    Click "Stay Logged In" to continue working.
+                </p>
+                <div class="modal-footer" style="justify-content: center;">
+                    <button onclick="extendSession()" class="btn btn-primary">Stay Logged In</button>
+                    <button onclick="forceLogout()" class="btn btn-outline">Logout Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- APP CONTAINER                                -->
+    <!-- ============================================ -->
+    <div id="appContainer" style="display:none">
+        <div class="global-loading" id="globalLoading">
+            <div class="loading-spinner"></div>
+        </div>
+
+        <div class="app-wrapper">
+            <!-- Sidebar -->
+            <aside class="main-sidebar" id="mainSidebar">
+                <div class="sidebar-header">
+                    <div class="logo">
+                        <img src="logo.png" alt="C4 SYSTEMS" onerror="this.src='https://via.placeholder.com/40x40?text=C4'">
+                    </div>
+                    <div>
+                        <h2>C4 SYSTEMS</h2>
+                        <span>Communication Monitoring</span>
+                    </div>
+                </div>
+                
+                <div class="nav-menu">
+                    <!-- MAIN NAVIGATION -->
+                    <div class="nav-section">
+                        <div class="nav-section-title" onclick="toggleSection('main')">
+                            MAIN <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="nav-submenu" id="mainMenu">
+                            <div class="nav-item" onclick="setActiveView('dashboard')">
+                                <i class="fas fa-chart-pie"></i>
+                                <span>Dashboard</span>
+                            </div>
+                            <div class="nav-item active" onclick="setActiveView('all')">
+                                <i class="fas fa-envelope"></i>
+                                <span>All Communications</span>
+                                <span class="badge" id="sidebarAllBadge">0</span>
+                            </div>
+                            <div class="nav-item" onclick="setActiveView('draft')">
+                                <i class="fas fa-pen"></i>
+                                <span>My Drafts</span>
+                                <span class="badge" id="sidebarDraftBadge">0</span>
+                            </div>
+                            <div class="nav-item" onclick="setActiveView('pending')">
+                                <i class="fas fa-clock"></i>
+                                <span>Pending Approval</span>
+                                <span class="badge" id="sidebarPendingBadge">0</span>
+                            </div>
+                            <div class="nav-item" onclick="setActiveView('approved')">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Approved</span>
+                                <span class="badge" id="sidebarApprovedBadge">0</span>
+                            </div>
+                            <div class="nav-item" onclick="setActiveView('released')">
+                                <i class="fas fa-paper-plane"></i>
+                                <span>Released</span>
+                                <span class="badge" id="sidebarReleasedBadge">0</span>
+                            </div>
+                            <div class="nav-item" onclick="setActiveView('rejected')">
+                                <i class="fas fa-times-circle"></i>
+                                <span>Rejected</span>
+                                <span class="badge" id="sidebarRejectedBadge">0</span>
+                            </div>
+                            <div class="nav-item" onclick="setActiveView('compliance')">
+                                <i class="fas fa-clipboard-check" style="color: #8b5cf6;"></i>
+                                <span>Compliance</span>
+                                <span class="badge" id="sidebarComplianceBadge" style="background: #ef4444; color: white;">0</span>
+                            </div>
+                            <div class="nav-item" onclick="setActiveView('analytics')">
+                                <i class="fas fa-chart-bar"></i>
+                                <span>Analytics</span>
+                            </div>
+                            <div class="nav-item" onclick="openSettings('general')">
+                                <i class="fas fa-cog"></i>
+                                <span>Settings</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FILTERS -->
+                    <div class="nav-section">
+                        <div class="nav-section-title" onclick="toggleSection('filters')">
+                            FILTERS <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="nav-submenu" id="filtersMenu">
+                            <div class="filter-section">
+                                <select class="filter-select" id="sidebarMonthSelect" onchange="applyFilters()">
+                                    <option value="all">All Months</option>
+                                    <option value="1">January</option>
+                                    <option value="2">February</option>
+                                    <option value="3">March</option>
+                                    <option value="4">April</option>
+                                    <option value="5">May</option>
+                                    <option value="6">June</option>
+                                    <option value="7">July</option>
+                                    <option value="8">August</option>
+                                    <option value="9">September</option>
+                                    <option value="10">October</option>
+                                    <option value="11">November</option>
+                                    <option value="12">December</option>
+                                </select>
+                                <select class="filter-select" id="sidebarYearSelect" onchange="applyFilters()"></select>
+                                <button class="filter-btn" onclick="setCurrentMonth()">
+                                    <i class="fas fa-calendar-check"></i> Current Month
+                                </button>
+                                <button class="filter-btn" onclick="clearTimeFilters()">
+                                    <i class="fas fa-times"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Profile -->
+                <div class="user-profile" id="userProfile">
+                    <div class="user-avatar" id="userAvatar">AD</div>
+                    <div class="user-info">
+                        <div class="user-name" id="userName">User</div>
+                        <div class="user-role" id="userRole">
+                            <span class="role-badge">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Add this right after your sidebar closing tag -->
+            <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Top Bar -->
+                <div class="top-bar">
+                    <div class="top-bar-left">
+                        <button type="button" class="toggle-sidebar-btn" onclick="toggleSidebar()" aria-label="Open navigation" aria-controls="mainSidebar" aria-expanded="false">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <div class="page-title">
+                            <h1 id="pageTitle">Communications Dashboard</h1>
+                            <p id="pageSubtitle">Manage and track all communications</p>
+                        </div>
+                    </div>
+                    <div class="top-bar-actions">
+                        <button class="btn btn-icon btn-bug" onclick="testFirebaseConnection()" title="Test Connection">
+                            <i class="fas fa-bug"></i>
+                        </button>
+                        <button class="btn btn-outline btn-icon" onclick="repairNRCounter()" title="Repair NR Counter">
+                            <i class="fas fa-tools"></i>
+                        </button>
+                        <button class="btn btn-outline btn-icon" onclick="debugNRs()" title="Debug NR Numbers">
+                            <i class="fas fa-database"></i>
+                        </button>
+                        <button class="btn btn-outline btn-icon" onclick="refreshData()" title="Refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="btn btn-outline btn-icon" onclick="toggleTheme()" title="Toggle Theme">
+                            <i class="fas fa-moon" id="themeIcon"></i>
+                        </button>
+                        <div class="export-dropdown">
+                            <button class="btn btn-outline btn-icon" onclick="toggleExportMenu()" title="Export">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <div class="export-menu" id="exportMenu">
+                                <div class="export-item" onclick="exportToExcel()">
+                                    <i class="fas fa-file-excel" style="color: #1e7e34;"></i>
+                                    <span>Export to Excel</span>
+                                </div>
+                                <div class="export-item" onclick="exportToCSV()">
+                                    <i class="fas fa-file-csv" style="color: #f59e0b;"></i>
+                                    <span>Export to CSV</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================= -->
+                <!-- DASHBOARD VIEW                           -->
+                <!-- ========================================= -->
+                <div id="dashboardView" class="dashboard-section">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-envelope"></i></div>
+                            <div class="stat-info">
+                                <h3 id="totalCount">0</h3>
+                                <p>Total</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-pen"></i></div>
+                            <div class="stat-info">
+                                <h3 id="draftCount">0</h3>
+                                <p>Draft</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                            <div class="stat-info">
+                                <h3 id="pendingCount">0</h3>
+                                <p>Pending</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                            <div class="stat-info">
+                                <h3 id="approvedCount">0</h3>
+                                <p>Approved</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-paper-plane"></i></div>
+                            <div class="stat-info">
+                                <h3 id="releasedCount">0</h3>
+                                <p>Released</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
+                            <div class="stat-info">
+                                <h3 id="rejectedCount">0</h3>
+                                <p>Rejected</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-clipboard-check"></i></div>
+                            <div class="stat-info">
+                                <h3 id="complianceCount">0</h3>
+                                <p>Compliance</p>
+                            </div>
+                        </div>
+                        <div class="stat-card" onclick="setActiveView('analytics')" style="cursor: pointer;">
+                            <div class="stat-icon" style="background: #ede9fe;">
+                                <i class="fas fa-chart-bar" style="color: #8b5cf6;"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3><i class="fas fa-arrow-right" style="font-size: 0.8rem;"></i></h3>
+                                <p>Analytics →</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================= -->
+                <!-- ANALYTICS VIEW                           -->
+                <!-- ========================================= -->
+                <div id="analyticsView" class="dashboard-section" style="display:none;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: #dbeafe;">
+                                <i class="fas fa-calendar-alt" style="color: #3b82f6;"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="analyticsTotalComms">0</h3>
+                                <p>Total Communications</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: #dcfce7;">
+                                <i class="fas fa-clock" style="color: #10b981;"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="analyticsAvgTime">0h</h3>
+                                <p>Avg Approval Time</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: #fef3c7;">
+                                <i class="fas fa-percent" style="color: #f59e0b;"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="analyticsComplianceRate">0%</h3>
+                                <p>Compliance Rate</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: #fce4ec;">
+                                <i class="fas fa-users" style="color: #ef4444;"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="analyticsActiveUsers">0</h3>
+                                <p>Active Users</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="table-container" style="padding: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="font-size: 0.9rem; font-weight: 600;">
+                                    <i class="fas fa-chart-line" style="color: var(--accent);"></i> Communication Trend
+                                </h4>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-sm btn-outline" onclick="setChartPeriod('7d')">7d</button>
+                                    <button class="btn btn-sm btn-primary" onclick="setChartPeriod('30d')">30d</button>
+                                    <button class="btn btn-sm btn-outline" onclick="setChartPeriod('90d')">90d</button>
+                                </div>
+                            </div>
+                            <div style="height: 250px; position: relative;">
+                                <canvas id="trendChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="table-container" style="padding: 1rem;">
+                            <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem;">
+                                <i class="fas fa-chart-pie" style="color: var(--accent);"></i> Status Distribution
+                            </h4>
+                            <div style="height: 250px; position: relative;">
+                                <canvas id="statusChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="table-container" style="padding: 1rem;">
+                            <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem;">
+                                <i class="fas fa-tags" style="color: var(--accent);"></i> Communication Types
+                            </h4>
+                            <div style="height: 200px; position: relative;">
+                                <canvas id="typeChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="table-container" style="padding: 1rem;">
+                            <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem;">
+                                <i class="fas fa-trophy" style="color: var(--accent);"></i> Top Contributors
+                            </h4>
+                            <div id="topUsersList" style="max-height: 200px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+
+                    <div class="table-container" style="padding: 1rem;">
+                        <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem;">
+                            <i class="fas fa-clipboard-check" style="color: var(--accent);"></i> Compliance Overview
+                        </h4>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                            <div style="text-align: center; padding: 0.5rem; background: var(--gray-50); border-radius: 8px;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="complianceOnTime">0</div>
+                                <div style="font-size: 0.7rem; color: var(--gray-500);">On Time</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.5rem; background: var(--gray-50); border-radius: 8px;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #f59e0b;" id="compliancePending">0</div>
+                                <div style="font-size: 0.7rem; color: var(--gray-500);">Pending</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.5rem; background: var(--gray-50); border-radius: 8px;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #ef4444;" id="complianceLate">0</div>
+                                <div style="font-size: 0.7rem; color: var(--gray-500);">Late</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.5rem; background: var(--gray-50); border-radius: 8px;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #8b5cf6;" id="complianceOverdue">0</div>
+                                <div style="font-size: 0.7rem; color: var(--gray-500);">Overdue</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================= -->
+                <!-- COMPLIANCE VIEW                          -->
+                <!-- ========================================= -->
+                <div id="complianceView" class="dashboard-section" style="display:none;">
+                    <div class="stats-grid">
+                        <div class="stat-card" onclick="filterCompliance('all')" style="cursor:pointer;">
+                            <div class="stat-icon" style="background: #ede9fe;">
+                                <i class="fas fa-clipboard-list" style="color: #8b5cf6;"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="complianceTotalCount">0</h3>
+                                <p>Total Items</p>
+                            </div>
+                        </div>
+                        <div class="stat-card" onclick="filterCompliance('pending')" style="cursor:pointer;">
+                            <div class="stat-icon" style="background: #fef3c7;">
+                                <i class="fas fa-clock" style="color: #f59e0b;"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="compliancePendingCount">0</h3>
+                                <p>Pending</p>
+                            </div>
+                        </div>
+                        <div class="stat-card" onclick="filterCompliance('overdue')" style="cursor:pointer;">
+                            <div class="stat-icon" style="background: #fee2e2;">
+                                <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="complianceOverdueCount" style="color: #ef4444;">0</h3>
+                                <p>⚠️ Overdue</p>
+                            </div>
+                        </div>
+                        <div class="stat-card" onclick="filterCompliance('ontime')" style="cursor:pointer;">
+                            <div class="stat-icon" style="background: #dcfce7;">
+                                <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="complianceOntimeCount">0</h3>
+                                <p>On Time</p>
+                            </div>
+                        </div>
+                        <div class="stat-card" onclick="filterCompliance('late')" style="cursor:pointer;">
+                            <div class="stat-icon" style="background: #fce4ec;">
+                                <i class="fas fa-clock" style="color: #ef4444;"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="complianceLateCount">0</h3>
+                                <p>Late</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-bar">
+                        <div class="action-bar-left">
+                            <button class="btn btn-sm btn-primary" onclick="filterCompliance('all')">All</button>
+                            <button class="btn btn-sm btn-outline" onclick="filterCompliance('pending')">⏳ Pending</button>
+                            <button class="btn btn-sm btn-outline" onclick="filterCompliance('overdue')" style="border-color: #ef4444; color: #ef4444;">⚠️ Overdue</button>
+                            <button class="btn btn-sm btn-outline" onclick="filterCompliance('ontime')" style="border-color: #10b981; color: #10b981;">✅ On Time</button>
+                            <button class="btn btn-sm btn-outline" onclick="filterCompliance('late')" style="border-color: #f59e0b; color: #f59e0b;">⏰ Late</button>
+                        </div>
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="complianceSearch" placeholder="Search unit, requirements..." oninput="filterComplianceList()">
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Unit/Office</th>
+                                    <th>Communication</th>
+                                    <th>Requirements</th>
+                                    <th>Target Date</th>
+                                    <th>Status</th>
+                                    <th>Submission</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="complianceBody">
+                                <tr class="empty-state">
+                                    <td colspan="7">
+                                        <i class="fas fa-clipboard-check"></i>
+                                        <p>No compliance items found</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pagination">
+                        <button class="pagination-btn" id="compliancePrevPage" onclick="changeCompliancePage('prev')" disabled>← Prev</button>
+                        <span id="compliancePageInfo">Page 1 of 1</span>
+                        <button class="pagination-btn" id="complianceNextPage" onclick="changeCompliancePage('next')" disabled>Next →</button>
+                    </div>
+                </div>
+
+                <!-- ========================================= -->
+                <!-- ALL COMMUNICATIONS VIEW                  -->
+                <!-- ========================================= -->
+                <div id="allCommsView" class="all-comms-section active">
+                    <div class="action-bar">
+                        <div class="action-bar-left">
+                            <button class="btn btn-primary" id="newCommBtn" onclick="toggleForm()">
+                                <i class="fas fa-plus"></i> New
+                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-outline" onclick="toggleDropdown()">
+                                    <i class="fas fa-ellipsis-v"></i> More
+                                </button>
+                                <div class="dropdown-menu" id="moreDropdown">
+                                    <div class="dropdown-item" onclick="addTestData()">
+                                        <i class="fas fa-flask"></i> Add Test Data
+                                    </div>
+                                    <div class="dropdown-item" onclick="showClearAllConfirm()">
+                                        <i class="fas fa-trash-alt"></i> Clear All
+                                    </div>
+                                    <div class="dropdown-divider"></div>
+                                    <div class="dropdown-item" onclick="testFirebaseConnection()">
+                                        <i class="fas fa-plug"></i> Test Connection
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchInput" placeholder="Search NR #, Subject...">
+                        </div>
+                    </div>
+
+                    <div class="bulk-actions" id="bulkActions" style="display:none">
+                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                        <span id="selectedCount">0 selected</span>
+                        <button class="btn btn-sm btn-danger" onclick="bulkDelete()">Delete</button>
+                        <button class="btn btn-sm btn-success" onclick="bulkApprove()">Approve</button>
+                        <button class="btn btn-sm btn-info" onclick="bulkRelease()">Release</button>
+                        <button class="btn btn-sm btn-outline" onclick="clearSelection()">Cancel</button>
+                    </div>
+
+                    <div id="form-container" class="form-card">
+                        <div class="form-title">
+                            <i class="fas fa-edit"></i>
+                            <span id="formTitle">New Communication</span>
+                        </div>
+                        <form id="comms-form">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>NR #</label>
+                                    <input type="text" id="nr" placeholder="Auto-generated" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Type</label>
+                                    <select id="type" required>
+                                        <option value="Radio Message">Radio Message</option>
+                                        <option value="Conference Notice">Conference Notice</option>
+                                        <option value="EDF">EDF</option>
+                                        <option value="Military Letter">Military Letter</option>
+                                        <option value="Naval Letter">Naval Letter</option>
+                                        <option value="Memo">Memo</option>
+                                        <option value="Report">Report</option>
+                                    </select>
+                                    <small class="form-help">Choose <strong>Report</strong> to show its recurring schedule options.</small>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Subject</label>
+                                    <input type="text" id="subject" placeholder="Enter subject" required>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Remarks / Notes</label>
+                                    <textarea id="remarks" rows="3" placeholder="Add remarks or notes..." onkeydown="handleFormRemarksKeydown(event)"></textarea>
+                                </div>
+                                <div class="form-group" id="recurrenceGroup" style="display:none;">
+                                    <label>Report recurrence</label>
+                                    <select id="recurrence">
+                                        <option value="none">One-time report</option>
+                                        <option value="weekly">Weekly</option>
+                                        <option value="monthly">Monthly</option>
+                                        <option value="semi_annual">Semi-annual</option>
+                                        <option value="annually">Annually</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="recurrenceStartGroup" style="display:none;">
+                                    <label>First due date</label>
+                                    <input type="date" id="recurrenceStartDate">
+                                </div>
+                            </div>
+                            <div class="distribution-container">
+                                <div class="form-title" style="font-size:0.9rem;">
+                                    <i class="fas fa-share-alt"></i> Distribution
+                                </div>
+                                <div class="role-checkbox-group" id="distributionCheckboxes"></div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Save</button>
+                                <button type="button" class="btn btn-outline" onclick="toggleForm()">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width:30px"><input type="checkbox" id="selectAllHeader" onchange="toggleSelectAllFromHeader()"></th>
+                                    <th>NR #</th>
+                                    <th>Subject / Type</th>
+                                    <th>Distribution</th>
+                                    <th>Release / Status</th>
+                                    <th>Compliance</th>
+                                    <th>Remarks</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comms-body">
+                                <tr class="empty-state">
+                                    <td colspan="8">
+                                        <i class="fas fa-inbox"></i>
+                                        <p>No communications found</p>
+                                        <button class="btn btn-primary" onclick="toggleForm()">Add Your First</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pagination">
+                        <button class="pagination-btn" id="prevPage" onclick="changePage('prev')" disabled>← Prev</button>
+                        <span id="pageInfo">Page 1 of 1</span>
+                        <button class="pagination-btn" id="nextPage" onclick="changePage('next')" disabled>Next →</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODALS                                      -->
+    <!-- ============================================ -->
+
+    <!-- Remarks Modal -->
+    <div id="remarksModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Edit Remarks</h3>
+                <button class="close-btn" onclick="closeRemarksModal()" title="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="remarksDocId">
+                <div class="remarks-preview">
+                    <div class="remarks-preview-label">Current Remarks:</div>
+                    <div id="remarksPreview" style="white-space: pre-wrap;"></div>
+                </div>
+                <div class="form-group">
+                    <label>Edit Remarks</label>
+                    <textarea id="remarksInput" class="remarks-textarea" rows="5" placeholder="Enter remarks here... (Ctrl+Enter to save)" onkeydown="handleRemarksKeydown(event)"></textarea>
+                    <div class="remarks-counter">0 characters</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="saveRemarks()" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Remarks
+                </button>
+                <button onclick="closeRemarksModal()" class="btn btn-outline">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div id="createUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-plus"></i> Create New User</h3>
+                <button class="close-btn" onclick="closeModal('createUserModal')" title="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div>
+                <div class="form-group"><label>Full Name</label><input type="text" id="newUserName" placeholder="John Doe"></div>
+                <div class="form-group"><label>Email Address</label><input type="email" id="newUserEmail" placeholder="user@c4systems.com"></div>
+                <div class="form-group"><label>Password</label><input type="password" id="newUserPassword" placeholder="••••••••"></div>
+                <div class="form-group"><label>Confirm Password</label><input type="password" id="newUserConfirmPassword" placeholder="••••••••"></div>
+                <div class="form-group"><label>Role</label>
+                    <select id="newUserRole">
+                        <option value="viewer">Viewer (Read Only)</option>
+                        <option value="creator">Creator (Can Create/Edit)</option>
+                        <option value="approver">Approver (Can Approve/Release)</option>
+                        <option value="admin">Admin (Full Access)</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button onclick="createUser()" class="btn btn-primary">Create User</button>
+                    <button onclick="closeModal('createUserModal')" class="btn btn-outline">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Details Modal -->
+    <div id="actionDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Action Details</h3>
+                <button class="close-btn" onclick="closeModal('actionDetailsModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="actionDetailsContent"></div>
+            <div class="modal-footer">
+                <button onclick="closeModal('actionDetailsModal')" class="btn btn-outline">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approval Modal -->
+    <div id="approvalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Take Action</h3>
+                <button class="close-btn" onclick="closeModal('approvalModal')">&times;</button>
+            </div>
+            <div>
+                <input type="hidden" id="modalDocId">
+                <div class="form-group"><label>Your Role</label><select id="modalRole" style="width:100%; padding:0.5rem;"></select></div>
+                <div class="form-group"><label>Action</label>
+                    <div style="display:flex; gap:1rem;">
+                        <label><input type="radio" name="actionType" value="approve" checked> Approve</label>
+                        <label><input type="radio" name="actionType" value="reject"> Reject</label>
+                    </div>
+                </div>
+                <div class="form-group"><label>Remarks</label><textarea id="modalRemarks" rows="2" style="width:100%; padding:0.5rem;"></textarea></div>
+                <div class="modal-footer">
+                    <button onclick="submitApproval()" class="btn btn-success">Submit</button>
+                    <button onclick="closeModal('approvalModal')" class="btn btn-outline">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Release Modal -->
+    <div id="releaseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Release Communication</h3>
+                <button class="close-btn" onclick="closeModal('releaseModal')">&times;</button>
+            </div>
+            <div>
+                <input type="hidden" id="releaseDocId">
+                <div class="form-group"><label>Release Number</label><input type="text" id="releaseNumber" style="width:100%; padding:0.5rem;" required></div>
+                <div class="form-group"><label>Release Date & Time</label><input type="datetime-local" id="releaseDateTime" style="width:100%; padding:0.5rem;" required></div>
+                <div class="form-group"><label>Remarks</label><textarea id="releaseRemarks" rows="2" style="width:100%; padding:0.5rem;"></textarea></div>
+                <div class="form-group"><label>Released To</label><input type="text" id="releaseTo" style="width:100%; padding:0.5rem;"></div>
+                <div class="modal-footer">
+                    <button onclick="submitRelease()" class="btn btn-info">Confirm</button>
+                    <button onclick="closeModal('releaseModal')" class="btn btn-outline">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compliance Modal -->
+    <!-- Compliance Modal - UPDATED with Edit Target Date -->
+<div id="complianceModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-clipboard-list"></i> Compliance Management</h3>
+            <button class="close-btn" onclick="closeModal('complianceModal')">&times;</button>
+        </div>
+        <div>
+            <input type="hidden" id="complianceDocId">
+            <input type="hidden" id="complianceEditIndex">
+            
+            <!-- Add New Requirement Section -->
+            <div id="complianceAddSection">
+                <h4><i class="fas fa-plus-circle"></i> Add New Requirement</h4>
+                <div class="form-group"><label>Unit/Office</label><input type="text" id="complianceUnit" style="width:100%; padding:0.5rem;"></div>
+                <div class="form-group"><label>Target Date & Time</label><input type="datetime-local" id="complianceTargetDateTime" style="width:100%; padding:0.5rem;"></div>
+                <div class="form-group"><label>Requirements</label><textarea id="complianceRequirements" rows="2" style="width:100%; padding:0.5rem;"></textarea></div>
+                <button onclick="saveCompliance()" class="btn btn-primary" style="width:100%; margin-top:0.5rem;">Save</button>
+            </div>
+            
+            <div style="text-align:center; margin:1rem 0;">— OR —</div>
+            
+            <!-- Submit Compliance Section -->
+            <div>
+                <h4><i class="fas fa-check-circle"></i> Submit Compliance</h4>
+                <div class="form-group"><label>Unit/Office</label><input type="text" id="complianceSubmitUnit" style="width:100%; padding:0.5rem;"></div>
+                <div class="form-group"><label>Submission Date & Time</label><input type="datetime-local" id="complianceSubmissionDateTime" style="width:100%; padding:0.5rem;"></div>
+                <div class="form-group"><label>Remarks</label><textarea id="complianceSubmissionRemarks" rows="2" style="width:100%; padding:0.5rem;"></textarea></div>
+                <button onclick="markAsComplied()" class="btn btn-success" style="width:100%; margin-top:0.5rem;">Mark Complied</button>
+            </div>
+            
+            <!-- Edit Compliance Section - HIDDEN by default -->
+            <div id="complianceEditSection" style="display:none; margin-top:1rem; border-top: 2px solid var(--gray-200); padding-top:1rem;">
+                <h4><i class="fas fa-edit" style="color: var(--accent);"></i> Edit Compliance</h4>
+                <div class="form-group"><label>Unit/Office</label><input type="text" id="complianceEditUnit" style="width:100%; padding:0.5rem;"></div>
+                <div class="form-group"><label>Target Date & Time</label><input type="datetime-local" id="complianceEditTargetDateTime" style="width:100%; padding:0.5rem;"></div>
+                <div class="form-group"><label>Requirements</label><textarea id="complianceEditRequirements" rows="2" style="width:100%; padding:0.5rem;"></textarea></div>
+                <div class="form-group"><label>Status</label>
+                    <select id="complianceEditStatus" style="width:100%; padding:0.5rem;">
+                        <option value="pending">Pending</option>
+                        <option value="submitted">Submitted</option>
+                        <option value="overdue">Overdue</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <button onclick="saveComplianceEdit()" class="btn btn-primary" style="flex:1;">
+                        <i class="fas fa-save"></i> Update Compliance
+                    </button>
+                    <button onclick="cancelComplianceEdit()" class="btn btn-outline" style="flex:1;">Cancel</button>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button onclick="closeModal('complianceModal')" class="btn btn-outline">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Compliance Details Modal -->
+    <div id="complianceDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Compliance Details</h3>
+                <button class="close-btn" onclick="closeModal('complianceDetailsModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="complianceDetailsContent"></div>
+            <div class="modal-footer">
+                <button onclick="closeModal('complianceDetailsModal')" class="btn btn-primary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline Modal -->
+    <div id="timelineModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Timeline</h3>
+                <button class="close-btn" onclick="closeModal('timelineModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="timelineContent"></div>
+            <div class="modal-footer">
+                <button onclick="closeModal('timelineModal')" class="btn btn-primary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Distribution Modal -->
+    <div id="distributionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Distribution Details</h3>
+                <button class="close-btn" onclick="closeModal('distributionModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="distributionContent"></div>
+            <div class="modal-footer">
+                <button onclick="closeModal('distributionModal')" class="btn btn-primary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear All Modal -->
+    <div id="clearAllModal" class="modal">
+        <div class="modal-content" style="text-align:center;">
+            <i class="fas fa-exclamation-triangle" style="font-size:3rem; color:var(--danger); margin-bottom:1rem;"></i>
+            <h3>Clear All Data?</h3>
+            <p>This will permanently delete all communications.</p>
+            <small>Action cannot be undone.</small>
+            <div class="modal-footer">
+                <button onclick="clearAllData()" class="btn btn-danger">Yes, Clear All</button>
+                <button onclick="closeModal('clearAllModal')" class="btn btn-outline">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> Settings</h3>
+                <button class="close-btn" onclick="closeModal('settingsModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="settings-tabs">
+                <button class="settings-tab active" data-tab="general"><i class="fas fa-sliders-h"></i> General</button>
+                <button class="settings-tab" data-tab="notifications"><i class="fas fa-bell"></i> Notifications</button>
+                <button class="settings-tab" data-tab="display"><i class="fas fa-palette"></i> Display</button>
+                <button class="settings-tab" data-tab="export"><i class="fas fa-download"></i> Export</button>
+                <button class="settings-tab" data-tab="security"><i class="fas fa-shield-alt"></i> Security</button>
+                <button class="settings-tab" data-tab="users"><i class="fas fa-users"></i> Users</button>
+            </div>
+
+            <div class="settings-content">
+                <!-- General Settings -->
+                <div id="settings-general" class="settings-pane active">
+                    <div class="settings-section">
+                        <h4>General Preferences</h4>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Items per page</label>
+                                <p>Number of communications shown per page</p>
+                            </div>
+                            <select id="itemsPerPageSetting" class="setting-control">
+                                <option value="10">10 items</option>
+                                <option value="20">20 items</option>
+                                <option value="50">50 items</option>
+                                <option value="100">100 items</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Default view</label>
+                                <p>Which view to show when logging in</p>
+                            </div>
+                            <select id="defaultViewSetting" class="setting-control">
+                                <option value="dashboard">Dashboard</option>
+                                <option value="all">All Communications</option>
+                                <option value="pending">Pending Approval</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Date format</label>
+                                <p>How dates are displayed throughout the app</p>
+                            </div>
+                            <select id="dateFormatSetting" class="setting-control">
+                                <option value="military">Military (DD MMM YYYY HHMMH)</option>
+                                <option value="standard">Standard (MM/DD/YYYY HH:MM)</option>
+                                <option value="relative">Relative (2 hours ago)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Auto-refresh data</label>
+                                <p>Automatically refresh data every X minutes</p>
+                            </div>
+                            <select id="autoRefreshSetting" class="setting-control">
+                                <option value="0">Off</option>
+                                <option value="1">Every 1 minute</option>
+                                <option value="5">Every 5 minutes</option>
+                                <option value="15">Every 15 minutes</option>
+                                <option value="30">Every 30 minutes</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notification Settings -->
+                <div id="settings-notifications" class="settings-pane">
+                    <div class="settings-section">
+                        <h4>Notification Preferences</h4>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Email notifications</label>
+                                <p>Receive email updates for approvals</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="emailNotifications">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Browser notifications</label>
+                                <p>Show desktop notifications for pending approvals</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="browserNotifications">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Sound alerts</label>
+                                <p>Play sound when new communication is added</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="soundAlerts">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Notify when action required</label>
+                                <p>Get notified when you need to approve/review</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="actionRequiredNotify" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display Settings -->
+                <div id="settings-display" class="settings-pane">
+                    <div class="settings-section">
+                        <h4>Appearance</h4>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Theme</label>
+                                <p>Choose your preferred color theme</p>
+                            </div>
+                            <div class="theme-options">
+                                <button class="theme-option active" data-theme="light"><i class="fas fa-sun"></i> Light</button>
+                                <button class="theme-option" data-theme="dark"><i class="fas fa-moon"></i> Dark</button>
+                                <button class="theme-option" data-theme="system"><i class="fas fa-desktop"></i> System</button>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Compact mode</label>
+                                <p>Show more items with tighter spacing</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="compactMode">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Show animations</label>
+                                <p>Enable/disable UI animations</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="showAnimations" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Sidebar collapsed by default</label>
+                                <p>Start with sidebar minimized</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="sidebarCollapsedDefault">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Export Settings -->
+                <div id="settings-export" class="settings-pane">
+                    <div class="settings-section">
+                        <h4>Export Preferences</h4>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Default export format</label>
+                                <p>Preferred format when exporting data</p>
+                            </div>
+                            <select id="exportFormatSetting" class="setting-control">
+                                <option value="excel">Excel (.xlsx)</option>
+                                <option value="csv">CSV (.csv)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Include in export</label>
+                                <p>Select which columns to include</p>
+                            </div>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" id="exportNR" checked> NR Number</label>
+                                <label><input type="checkbox" id="exportSubject" checked> Subject</label>
+                                <label><input type="checkbox" id="exportType" checked> Type</label>
+                                <label><input type="checkbox" id="exportStatus" checked> Status</label>
+                                <label><input type="checkbox" id="exportReleaseDate" checked> Release Date</label>
+                                <label><input type="checkbox" id="exportRemarks" checked> Remarks</label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Auto-backup</label>
+                                <p>Automatically export data weekly</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="autoBackup">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Settings -->
+                <div id="settings-security" class="settings-pane">
+                    <div class="settings-section">
+                        <h4>Security & Privacy</h4>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Session timeout</label>
+                                <p>Auto logout after inactivity (minutes)</p>
+                            </div>
+                            <select id="sessionTimeoutSetting" class="setting-control">
+                                <option value="15">15 minutes</option>
+                                <option value="30" selected>30 minutes</option>
+                                <option value="60">1 hour</option>
+                                <option value="120">2 hours</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Two-factor authentication</label>
+                                <p>Add extra security to your account</p>
+                            </div>
+                            <button class="btn btn-outline" onclick="enable2FA()">
+                                <i class="fas fa-shield-alt"></i> Enable 2FA
+                            </button>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Login history</label>
+                                <p>View recent account activity</p>
+                            </div>
+                            <button class="btn btn-outline" onclick="viewLoginHistory()">
+                                <i class="fas fa-history"></i> View History
+                            </button>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Clear local data</label>
+                                <p>Remove cached data from browser</p>
+                            </div>
+                            <button class="btn btn-danger" onclick="clearLocalData()">
+                                <i class="fas fa-trash"></i> Clear Cache
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Management -->
+                <div id="settings-users" class="settings-pane">
+                    <div class="settings-section">
+                        <h4><i class="fas fa-user-plus"></i> User Management</h4>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Create New User</label>
+                                <p>Add a new user to the system with specific role permissions</p>
+                            </div>
+                            <button class="btn btn-primary" onclick="openCreateUserModal()">
+                                <i class="fas fa-user-plus"></i> Create User
+                            </button>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <label>Hide Admin Accounts</label>
+                                <p>Hide admin accounts from the user list for cleaner view</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="hideAccountsSetting" onchange="toggleHideAccountsFromSettings()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item" style="flex-direction: column; align-items: stretch;">
+                            <div class="setting-info" style="margin-bottom: 1rem;">
+                                <label>System Users</label>
+                                <p>Manage existing users and their roles</p>
+                            </div>
+                            <div id="settingsUserList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: 8px;">
+                                <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading users...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: space-between;">
+                <div style="display: flex; gap: 0.5rem;">
+                    <button onclick="saveSettings()" class="btn btn-primary">Save Settings</button>
+                    <button onclick="resetSettings()" class="btn btn-outline">Reset to Default</button>
+                    <button onclick="closeModal('settingsModal')" class="btn btn-outline">Cancel</button>
+                </div>
+                <button onclick="logoutFromSettings()" class="btn btn-danger">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast" class="toast">
+        <i class="fas"></i>
+        <span id="toastMessage"></span>
+    </div>
+
+<!-- ============================================ -->
+<!-- CHAT BOX                                     -->
+<!-- ============================================ -->
+
+<!-- Chat Toggle Button -->
+<button id="chatToggleBtn" class="chat-toggle-btn" onclick="toggleChat()" title="Open Chat">
+    <i class="fas fa-comment-dots"></i>
+    <span class="chat-badge" id="chatBadge">0</span>
+</button>
+
+<!-- Chat Box -->
+<div id="chatBox" class="chat-box" style="display: none;">
+    <div class="chat-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-comment-dots" style="color: white;"></i>
+            <span id="chatTitle" style="color: white; font-weight: 600; font-size: 0.9rem;">Team Chat</span>
+            <span style="font-size: 0.6rem; color: #34d399; background: rgba(52, 211, 153, 0.2); padding: 0.1rem 0.5rem; border-radius: 12px;">● Online</span>
+        </div>
+        <button onclick="toggleChat()" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem;">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="chat-conversation-bar">
+        <button type="button" class="chat-conversation active" id="teamChatButton" onclick="selectTeamChat()"><i class="fas fa-users"></i> Team</button>
+        <select id="chatRecipient" class="chat-recipient" onchange="selectDirectChat(this.value)">
+            <option value="">Direct message…</option>
+        </select>
+    </div>
+    
+    <div class="chat-messages" id="chatMessages">
+        <div class="chat-welcome">
+            <i class="fas fa-comments" style="font-size: 2rem; color: var(--gray-400);"></i>
+            <p style="color: var(--gray-500); margin-top: 0.5rem;">No messages yet</p>
+            <p style="font-size: 0.7rem; color: var(--gray-400);">Be the first to send a message!</p>
+        </div>
+    </div>
+    
+    <div class="chat-input-area">
+        <div style="display: flex; gap: 0.5rem; width: 100%;">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Message the team..." onkeydown="handleChatKeydown(event)">
+            <button onclick="sendChatMessage()" class="chat-send-btn" id="chatSendBtn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 0.25rem; font-size: 0.55rem; color: var(--gray-400);">
+            <span><i class="fas fa-user-shield" style="font-size: 0.45rem;"></i> Team and direct messages</span>
+            <span id="chatTypingIndicator" style="display: none;">Someone is typing...</span>
+        </div>
+    </div>
+</div>
+
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT FILES - CORRECT ORDER            -->
+    <!-- ============================================ -->
+    <script src="js/utils.js"></script>
+    <script src="js/firebase-init.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/analytics.js"></script>
+    <script src="js/compliance.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/chat.js"></script>
+</body>
+</html>
